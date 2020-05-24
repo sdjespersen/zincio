@@ -1,6 +1,6 @@
 from .dtypes import MARKER, Datetime, Quantity, Ref, URI
 from .grid import Grid
-from .pyzinc import parse, ZincParseException, ZincErrorGridException
+from .pyzinc import read_zinc, ZincParseException, ZincErrorGridException
 
 __all__ = [
     'MARKER',
@@ -9,7 +9,7 @@ __all__ = [
     'Ref',
     'URI',
     'Grid',
-    'parse',
+    'read_zinc',
     'ZincParseException',
     'ZincErrorGridException',
 ]

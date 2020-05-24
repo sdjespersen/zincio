@@ -5,11 +5,11 @@ import re
 
 from collections import OrderedDict
 from pandas.api.types import CategoricalDtype
-from pathlib import Path
-from typing import Any, AnyStr, Dict, IO, Iterable, Tuple, Union
+from typing import Any, Dict, Iterable, Tuple
 
 from .dtypes import MARKER, Datetime, Quantity, Ref
 from .grid import Grid
+from .typing import FilePathOrBuffer
 
 
 DATETIME_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
@@ -30,7 +30,8 @@ STRING_KIND = "Str"
 NUMERIC_UNIT_SUFFIXES = ("°F", "°C", "%", "cfm", "kW")
 
 QUANTITY_TAGS = ('curVal', 'writeVal')
-NUMERIC_TAGS = ('precision', 'writeLevel')
+FLOAT_VALUED_TAGS = ('precision', 'writeLevel')
+INTEGER_VALUED_TAGS = ('hisLimit',)
 
 
 class ZincParseException(Exception):
@@ -41,8 +42,8 @@ class ZincErrorGridException(Exception):
     pass
 
 
-def parse(filepath_or_buffer: Union[str, Path, IO[AnyStr]]) -> Grid:
-    """Parses utf-8 encoded Zinc file or buffer to a Grid."""
+def read_zinc(filepath_or_buffer: FilePathOrBuffer) -> Grid:
+    """Reads utf-8 encoded Zinc file or buffer to a Grid."""
     with _handle_buffer(filepath_or_buffer) as f:
         gridinfo_raw = f.readline().rstrip("\n")
         colinfo_raw = f.readline().rstrip("\n")
@@ -215,9 +216,12 @@ def _parse_tags(
             if unit is not None:
                 val = result[tag]
                 result[tag] = Quantity(float(val.rstrip(unit)), unit)
-    for tag in NUMERIC_TAGS:
+    for tag in FLOAT_VALUED_TAGS:
         if tag in result:
             result[tag] = float(result[tag])
+    for tag in INTEGER_VALUED_TAGS:
+        if tag in result:
+            result[tag] = int(result[tag])
     return result
 
 

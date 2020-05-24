@@ -79,7 +79,7 @@ class Ref:
     def __str__(self):
         s = "@" + self.uid
         if self.name is not None:
-            s += " " + self.name
+            s += f' "{self.name}"'
         return s
 
 

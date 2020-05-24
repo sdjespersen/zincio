@@ -1,25 +1,31 @@
 # coding: utf-8
 import io
 import numpy as np
-import os
 import pandas as pd
 import pytest
 import pyzinc
 
 from collections import OrderedDict
 from pandas.api.types import CategoricalDtype
-
-
-FULL_GRID_FILE = "full_grid.zinc"
-SINGLE_SERIES_FILE = "single_series_grid.zinc"
-HISREAD_SERIES_FILE = "hisread_series.zinc"
+from pathlib import Path
 
 
 def get_abspath(relpath):
-    return os.path.join(os.path.dirname(__file__), relpath)
+    return Path(__file__).parent / relpath
 
 
-def test_parse_grid():
+FULL_GRID_FILE = get_abspath("full_grid.zinc")
+SINGLE_SERIES_FILE = get_abspath("single_series_grid.zinc")
+HISREAD_SERIES_FILE = get_abspath("hisread_series.zinc")
+
+
+def assert_grid_equal(a, b):
+    assert a.grid_info == b.grid_info
+    assert a.column_info == b.column_info
+    pd.testing.assert_frame_equal(a.data(squeeze=False), b._data)
+
+
+def test_read_zinc_grid():
     expected_grid_info = OrderedDict(
         ver="3.0",
         view="chart",
@@ -27,7 +33,7 @@ def test_parse_grid():
             "2020-05-18T00:00:00-07:00", tz="Los_Angeles"),
         hisEnd=pyzinc.Datetime(
             "2020-05-18T01:15:00-07:00", tz="Los_Angeles"),
-        hisLimit="10000",
+        hisLimit=10000,
         dis="Mon 18-May-2020")
     expected_column_info = OrderedDict(
         ts=OrderedDict(
@@ -167,37 +173,35 @@ def test_parse_grid():
         index=expected_index,
         data={
             ('@p:q01b001:r:0197767d-c51944e4 '
-             'Building One VAV1-01 Eff Heat SP'): [
+             '"Building One VAV1-01 Eff Heat SP"'): [
                 np.nan, 68.553, 68.554, 69.723, np.nan,
             ],
             ('@p:q01b001:r:e69a7401-f4b340ff '
-             'Building One VAV1-01 Eff Occupancy'): pd.Series(
+             '"Building One VAV1-01 Eff Occupancy"'): pd.Series(
                 ['Occupied', '', '', '', 'Unoccupied'],
                 index=expected_index,
                 dtype=CategoricalDtype(categories=[
                     'Nul', 'Occupied', 'Unoccupied', 'Bypass', 'Standby'])
             ),
             ('@p:q01b001:r:dcfe87d9-cd034388 '
-             'Building One VAV1-01 Damper Pos'): [np.nan, 3, 7, 18, np.nan],
+             '"Building One VAV1-01 Damper Pos"'): [np.nan, 3, 7, 18, np.nan],
             ('@p:q01b001:r:8fab195e-58ffca99 '
-             'Building One VAV1-01 Occ Heat SP Offset'): [
+             '"Building One VAV1-01 Occ Heat SP Offset"'): [
                 np.nan, -1.984, -2.203, 5.471, np.nan,
             ],
-            '@p:q01b001:r:260ce2bb-2ef5065f Building One VAV1-01 Air Flow': [
+            '@p:q01b001:r:260ce2bb-2ef5065f "Building One VAV1-01 Air Flow"': [
                 np.nan, 118.65, 62.0, np.nan, np.nan,
             ],
         })
-    actual = pyzinc.parse(get_abspath(FULL_GRID_FILE))
+    actual = pyzinc.read_zinc(FULL_GRID_FILE)
     expected = pyzinc.Grid(
         grid_info=expected_grid_info,
         column_info=expected_column_info,
         data=expected_dataframe)
-    assert actual.grid_info == expected.grid_info
-    assert actual.column_info == expected.column_info
-    pd.testing.assert_frame_equal(actual.data(), expected._data)
+    assert_grid_equal(actual, expected)
 
 
-def test_parse_single_series():
+def test_read_zinc_single_series():
     expected_grid_info = OrderedDict(
         ver="3.0",
         view="chart",
@@ -205,7 +209,7 @@ def test_parse_single_series():
             "2020-05-18T00:00:00-07:00", tz="Los_Angeles"),
         hisEnd=pyzinc.Datetime(
             "2020-05-18T01:15:00-07:00", tz="Los_Angeles"),
-        hisLimit="10000",
+        hisLimit=10000,
         dis="Mon 18-May-2020")
     expected_column_info = OrderedDict(
         ts=OrderedDict(
@@ -237,7 +241,7 @@ def test_parse_single_series():
             heating=pyzinc.MARKER
         ),
     )
-    dname = '@p:q01b001:r:0197767d-c51944e4 Building One VAV1-01 Eff Heat SP'
+    dname = '@p:q01b001:r:0197767d-c51944e4 "Building One VAV1-01 Eff Heat SP"'
     expected_data = pd.DataFrame(
         data={dname: [np.nan, 68.553, 68.554, 69.723, np.nan]},
         index=pd.DatetimeIndex(
@@ -254,14 +258,12 @@ def test_parse_single_series():
         grid_info=expected_grid_info,
         column_info=expected_column_info,
         data=expected_data)
-    actual = pyzinc.parse(get_abspath(SINGLE_SERIES_FILE))
-    assert actual.grid_info == expected.grid_info
-    assert actual.column_info == expected.column_info
-    pd.testing.assert_frame_equal(actual.data(squeeze=False), expected._data)
+    actual = pyzinc.read_zinc(SINGLE_SERIES_FILE)
+    assert_grid_equal(actual, expected)
     pd.testing.assert_series_equal(actual.data(), expected._data[dname])
 
 
-def test_parse_deficient_column_info():
+def test_read_zinc_deficient_column_info():
     expected_grid_info = OrderedDict(
         ver="3.0",
         id=pyzinc.Ref("p:q01b001:r:20aad139-beff4e8c",
@@ -285,24 +287,47 @@ def test_parse_deficient_column_info():
         grid_info=expected_grid_info,
         column_info=expected_column_info,
         data=expected_data)
-    actual = pyzinc.parse(get_abspath(HISREAD_SERIES_FILE))
-    assert actual.grid_info == expected.grid_info
-    assert actual.column_info == expected.column_info
-    pd.testing.assert_frame_equal(actual.data(squeeze=False), expected._data)
+    actual = pyzinc.read_zinc(HISREAD_SERIES_FILE)
+    assert_grid_equal(actual, expected)
     pd.testing.assert_series_equal(actual.data(), expected._data['val'])
 
 
-def test_parse_malformed_grid():
+def test_read_zinc_malformed_grid():
     grid = 'this is not a legal grid'
     with pytest.raises(pyzinc.ZincParseException):
-        pyzinc.parse(io.StringIO(grid))
+        pyzinc.read_zinc(io.StringIO(grid))
 
 
-def test_parse_error_grid():
+def test_read_zinc_error_grid():
     err_grid = (
         'ver:"3.0" errType:"sys::NullErr" err '
         'errTrace:"sys::NullErr: java.lang.NullPointerException\n" '
         'dis:"sys::NullErr: java.lang.NullPointerException"\n'
         'empty')
     with pytest.raises(pyzinc.ZincErrorGridException):
-        pyzinc.parse(io.StringIO(err_grid))
+        pyzinc.read_zinc(io.StringIO(err_grid))
+
+
+def test_read_zinc_stringio_same_as_file():
+    expected = pyzinc.read_zinc(FULL_GRID_FILE)
+    with open(FULL_GRID_FILE, encoding='utf-8') as f:
+        raw = f.read()
+    actual = pyzinc.read_zinc(io.StringIO(raw))
+    assert_grid_equal(actual, expected)
+
+
+def test_grid_to_zinc_string():
+    with open(SINGLE_SERIES_FILE, encoding='utf-8') as f:
+        expected = f.read()
+    actual = pyzinc.read_zinc(SINGLE_SERIES_FILE).to_zinc()
+    assert actual == expected
+
+
+def test_grid_to_zinc_file(tmp_path):
+    with open(SINGLE_SERIES_FILE, encoding='utf-8') as f:
+        expected = f.read()
+    output_file = tmp_path / "output.zinc"
+    pyzinc.read_zinc(SINGLE_SERIES_FILE).to_zinc(output_file)
+    with open(output_file, encoding="utf-8") as f:
+        actual = f.read()
+    assert actual == expected
