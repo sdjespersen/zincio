@@ -1,5 +1,5 @@
-pyzinc: Python support for Zinc (with Pandas)
-=============================================
+pyzinc: Project Haystack Zinc I/O in Python
+===========================================
 
 Overview
 --------
@@ -8,18 +8,20 @@ Overview
 Project Haystack. This project exists solely to make it simple—and *fast!*—to
 load Zinc-format strings into a ``Grid``.
 
-This implementation does not claim to adhere to the Zinc spec yet, as it is
-still in development.
-
 Other Python libraries for Zinc exist, notably `hszinc
 <https://github.com/widesky/hszinc>`_. So why this library? Basically only one
 reason: `performance`_. Note that this does not have feature parity with the
 hszinc library, so this comparison is not yet fair.
 
+Please note: This implementation does not claim to adhere to the Zinc spec
+yet, and it likely never will; the spec includes support for things like
+nested Grids, which completely upend the assumptions of tabular data. This
+library sacrifices some completeness for speed.
+
 Example usage
 -------------
 
-The API tries to mimic the Pandas API, due to the similarity in use cases.
+The API mimics the Pandas API, due to the similarity in use cases.
 
 Say you have the following in ``example.zinc``::
 
