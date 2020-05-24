@@ -1,0 +1,6 @@
+ver:"3.0" id:@p:q01b001:r:20aad139-beff4e8c "Building One VAV1-01 DA Temp" hisStart:2020-04-01T00:00:00-07:00 Los_Angeles hisEnd:2020-04-02T00:00:00-07:00 Los_Angeles
+ts,val
+2020-04-01T00:00:00-07:00 Los_Angeles,66.092°F
+2020-04-01T00:05:00-07:00 Los_Angeles,66.002°F
+2020-04-01T00:10:00-07:00 Los_Angeles,65.930°F
+
