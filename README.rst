@@ -2,6 +2,14 @@
 zincio: Read/write Project Haystack Zinc Format
 ===============================================
 
+.. image:: https://img.shields.io/pypi/v/zincio?color=blue
+   :target: https://pypi.org/project/zincio/
+   :alt: PyPI
+
+.. image:: https://readthedocs.org/projects/zincio/badge/?version=latest
+   :target: https://zincio.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
+
 Overview
 ========
 
