@@ -1,8 +1,9 @@
+===========================================
 pyzinc: Project Haystack Zinc I/O in Python
 ===========================================
 
 Overview
---------
+========
 
 `Zinc <https://project-haystack.org/doc/Zinc>`_ is a CSV-like format for
 Project Haystack. This project exists solely to make it simple—and *fast!*—to
@@ -19,11 +20,11 @@ nested Grids, which completely upend the assumptions of tabular data. This
 library sacrifices some completeness for speed.
 
 Example usage
--------------
+=============
 
 The API mimics the Pandas API, due to the similarity in use cases.
 
-Say you have the following in ``example.zinc``::
+Consider the file ``examples/example.zinc``::
 
   ver:"3.0" view:"chart" hisStart:2020-05-18T00:00:00-07:00 Los_Angeles hisEnd:2020-05-18T01:15:00-07:00 Los_Angeles hisLimit:10000 dis:"Mon 18-May-2020"
   ts disKey:"ui::timestamp" tz:"Los_Angeles" chartFormat:"ka",v0 id:@p:q01b001:r:0197767d-c51944e4 "Building One VAV1-01 Eff Heat SP" navName:"Eff Heat SP" point his siteRef:@p:q01b001:r:8fc116f8-72c5320c "Building One" equipRef:@p:q01b001:r:b78a8dcc-828caa1b "Building One VAV1-01" curVal:65.972°F curStatus:"ok" kind:"Number" unit:"°F" tz:"Los_Angeles" sp temp cur haystackPoint air effective heating
@@ -39,33 +40,44 @@ you can load it with
 
   import pyzinc
 
-  grid = pyzinc.read_zinc("example.zinc")
+  grid = pyzinc.read_zinc("examples/example.zinc")  # -> pyzinc.Grid
 
-Which returns a ``Grid``. This is basically a glorified ``pandas.DataFrame``,
-with some extra metadata about the grid (e.g. version info) and the columns
-(e.g. units, current values, etc.). To access the tabular data as a `pandas`
-type, use
+A ``Grid`` has three main constituents:
+* A ``grid_info`` attribute consisting of metadata about the entire ``Grid``
+* A ``column_info`` attribute consisting of metadata about each individual column
+* A ``data()`` method, which returns the underlying tabular data as a
+  ``pandas.DataFrame`` or ``pandas.Series``.
 
-.. code:: python
+Here they are, in action:
 
-  grid.data()
+  >>> grid.grid_info
+  OrderedDict([('ver', '3.0'), ('view', 'chart'), ('hisStart', Datetime(2020-05-18T00:00:00-07:00, "Los_Angeles")), ('hisEnd', Datetime(2020-05-18T01:15:00-07:00, "Los_Angeles")), ('hisLimit', 10000), ('dis', 'Mon 18-May-2020')])
 
-which returns a ``pandas.Series`` if there is only one column of data and a
-``pandas.DataFrame`` otherwise. If you want a single column returned as a frame, use
+  >>> grid.column_info
+  OrderedDict([('ts', OrderedDict([('disKey', 'ui::timestamp'), ('tz', 'Los_Angeles'), ('chartFormat', 'ka')])), ('v0', OrderedDict([('id', Ref("p:q01b001:r:0197767d-c51944e4", "Building One VAV1-01 Eff Heat SP")), ('navName', 'Eff Heat SP'), ('point', MARKER), ('his', MARKER), ('siteRef', Ref("p:q01b001:r:8fc116f8-72c5320c", "Building One")), ('equipRef', Ref("p:q01b001:r:b78a8dcc-828caa1b", "Building One VAV1-01")), ('curVal', Quantity(65.972, "°F")), ('curStatus', 'ok'), ('kind', 'Number'), ('unit', '°F'), ('tz', 'Los_Angeles'), ('sp', MARKER), ('temp', MARKER), ('cur', MARKER), ('haystackPoint', MARKER), ('air', MARKER), ('effective', MARKER), ('heating', MARKER)]))])
 
-.. code:: python
+  >>> grid.data()  # returns a Series since only one column present
+  ts
+  2020-05-17 23:47:08-07:00       NaN
+  2020-05-17 23:55:00-07:00    68.553
+  2020-05-18 00:00:00-07:00    68.554
+  2020-05-18 00:05:00-07:00    69.723
+  2020-05-18 01:13:09-07:00       NaN
+  Name: @p:q01b001:r:0197767d-c51944e4 "Building One VAV1-01 Eff Heat SP", dtype: float64
 
-  grid.data(squeeze=False)
+  >>> grid.data(squeeze=False)  # returns a DataFrame
+                             @p:q01b001:r:0197767d-c51944e4 "Building One VAV1-01 Eff Heat SP"
+  ts
+  2020-05-17 23:47:08-07:00                                                NaN
+  2020-05-17 23:55:00-07:00                                             68.553
+  2020-05-18 00:00:00-07:00                                             68.554
+  2020-05-18 00:05:00-07:00                                             69.723
+  2020-05-18 01:13:09-07:00                                                NaN
 
-The grid can be written to a file or a string with
-
-.. code:: python
-
-  grid.to_zinc()  # returns a string
-  grid.to_zinc(output_file)  # writes to `output_file`
+For more details, see the API docs.
 
 Performance
------------
+===========
 
 Run ``bench/benchmark.py`` for these numbers.
 
