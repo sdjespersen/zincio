@@ -1,26 +1,20 @@
-import io
-import pandas as pd
+import pandas as pd  # type: ignore
 
-from collections import OrderedDict
-from typing import Optional
+from os import PathLike
+from typing import Optional, Union
 
 from .dtypes import MARKER
-from .typing import FilePathOrBuffer
+from .typing import ColumnInfoType, GridInfoType
 
 
 YMD_HMS_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
-
-
-def _write_handle(path_or_buf: FilePathOrBuffer):
-    if isinstance(path_or_buf, io.StringIO):
-        return path_or_buf
-    return open(path_or_buf, "w", encoding="utf-8")
 
 
 class Grid:
     """A tabular data frame for Project Haystack.
 
     A Grid essentially consists of three parts:
+
     - Grid-level metadata
     - Column-level metadata
     - Tabular data
@@ -33,16 +27,24 @@ class Grid:
     For an extended description of a Project Haystack Grid, see
     https://project-haystack.org/doc/Grids. For a full description of the Zinc
     format, see https://project-haystack.org/doc/Zinc.
+
+    Attributes:
+        grid_info: A GridInfoType containing, at a minimum, the version
+            information of the Grid, and potentially things like the operation
+            performed to obtain it.
+        column_info: A ColumnInfoType containing metadata about each column.
+            Included are details such as what units a column represents, or the
+            Point ID associated with the column.
     """
 
     def __init__(
             self,
             *,
-            grid_info: str,
-            column_info: OrderedDict,
+            grid_info: GridInfoType,
+            column_info: ColumnInfoType,
             data: pd.DataFrame):
-        self.grid_info = grid_info
-        self.column_info = column_info
+        self.grid_info = grid_info  # type: GridInfoType
+        self.column_info = column_info  # type: ColumnInfoType
         self._data = data
 
     def __repr__(self):
@@ -53,26 +55,31 @@ class Grid:
                 + self._data.__repr__()
                 + ">")
 
-    def data(self, squeeze=True):
+    def data(self, squeeze=True) -> Union[pd.DataFrame, pd.Series]:
         """Returns the tabular data in this Grid as a DataFrame or Series.
 
         Args:
-            squeeze: bool, Whether to return a `pd.Series` if this Grid
-                consists of only one column. Otherwise, a `pd.DataFrame` is
-                returned.
+            squeeze: bool, default True
+                Whether to return a `pd.Series` if this Grid consists of only
+                one column. Otherwise, a `pd.DataFrame` is returned.
         """
         if len(self._data.columns) == 1 and squeeze:
             return self._data[self._data.columns[0]]
         return self._data
 
-    def to_zinc(
-            self,
-            path_or_buf: Optional[FilePathOrBuffer] = None) -> Optional[str]:
+    def to_zinc(self, path: Optional[PathLike] = None) -> Optional[str]:
+        """Writes the object to a Zinc-formatted file.
+
+        Args:
+            path: str or file handle, default None
+                File path or object. If None is provided, the result is
+                returned as a string. Otherwise, object is written to file.
+        """
         gridinfostr = self._grid_info_str()
         columninfostr = self._column_info_str()
         df = self._zinc_format_data()
-        if path_or_buf is not None:
-            with _write_handle(path_or_buf) as f:
+        if path is not None:
+            with open(path, "w", encoding="utf-8") as f:
                 f.write(gridinfostr + "\n")
                 f.write(columninfostr + "\n")
                 df.to_csv(f, mode="a", header=False)

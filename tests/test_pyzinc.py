@@ -1,12 +1,12 @@
 # coding: utf-8
 import io
-import numpy as np
-import pandas as pd
-import pytest
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import pytest  # type: ignore
 import pyzinc
 
 from collections import OrderedDict
-from pandas.api.types import CategoricalDtype
+from pandas.api.types import CategoricalDtype  # type: ignore
 from pathlib import Path
 
 

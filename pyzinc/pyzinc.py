@@ -1,15 +1,15 @@
 import io
 import logging
-import pandas as pd
+import pandas as pd  # type: ignore
 import re
 
 from collections import OrderedDict
-from pandas.api.types import CategoricalDtype
-from typing import Any, Dict, Iterable, Tuple
+from pandas.api.types import CategoricalDtype  # type: ignore
+from typing import Any, Dict, IO, Iterable, Tuple
 
 from .dtypes import MARKER, Datetime, Quantity, Ref
 from .grid import Grid
-from .typing import FilePathOrBuffer
+from .typing import ColumnInfoType, FilePathOrBuffer, GridInfoType
 
 
 DATETIME_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
@@ -35,15 +35,23 @@ INTEGER_VALUED_TAGS = ('hisLimit',)
 
 
 class ZincParseException(Exception):
+    """Exception indicating that the grid could not be parsed."""
     pass
 
 
 class ZincErrorGridException(Exception):
+    """Exception indicating that the grid was an error grid."""
     pass
 
 
 def read_zinc(filepath_or_buffer: FilePathOrBuffer) -> Grid:
-    """Reads utf-8 encoded Zinc file or buffer to a Grid."""
+    """Reads utf-8 encoded Zinc file or buffer to a Grid.
+
+    Arguments:
+        filepath_or_buffer: str, path object, or file-like object
+            Accepts any path-like object that can be opened or a file-like
+            object that has a read() method.
+    """
     with _handle_buffer(filepath_or_buffer) as f:
         gridinfo_raw = f.readline().rstrip("\n")
         colinfo_raw = f.readline().rstrip("\n")
@@ -75,13 +83,13 @@ def read_zinc(filepath_or_buffer: FilePathOrBuffer) -> Grid:
     return Grid(data=data, column_info=column_info, grid_info=grid_info)
 
 
-def _handle_buffer(filepath_or_buffer):
+def _handle_buffer(filepath_or_buffer: FilePathOrBuffer) -> IO:
     if isinstance(filepath_or_buffer, io.StringIO):
         return filepath_or_buffer
     return open(filepath_or_buffer, encoding="utf-8")
 
 
-def _parse_zinc_grid_info(gridinfo: str) -> Dict[str, str]:
+def _parse_zinc_grid_info(gridinfo: str) -> GridInfoType:
     tags = _parse_tags(_split_tags(gridinfo))
     if 'ver' not in tags:
         raise ZincParseException("Invalid version header!")
@@ -90,8 +98,8 @@ def _parse_zinc_grid_info(gridinfo: str) -> Dict[str, str]:
     return tags
 
 
-def _parse_zinc_column_info(header: str) -> Dict[str, Dict[str, Any]]:
-    column_info = OrderedDict()  # type: OrderedDict[str, Dict[str, Any]]
+def _parse_zinc_column_info(header: str) -> ColumnInfoType:
+    column_info = OrderedDict()  # type: ColumnInfoType
     for col in _split_columns(header):
         toks = _split_tags(col)
         colname, v = next(toks)
@@ -187,8 +195,7 @@ def _expect_timezone(s, i, j):
     return is_dt_str and (utc_is_next or not s[i+1:j].endswith('Z'))
 
 
-def _parse_tags(
-        tokens: Iterable[Tuple[str, str]]) -> Dict[str, Dict[str, Any]]:
+def _parse_tags(tokens: Iterable[Tuple[str, str]]) -> ColumnInfoType:
     result = OrderedDict()  # type: Dict[str, Any]
     for k, v in tokens:
         if v is MARKER:
