@@ -79,7 +79,7 @@ def read_zinc(filepath_or_buffer: FilePathOrBuffer) -> Grid:
         # i == 0 corresponds to the index; leave until end
         if i > 0:
             data[cname] = _sanitize_zinc_series(data[cname], colinfo)
-    _set_datetime_index(data, column_info['ts'])
+    data = _set_datetime_index(data, column_info['ts'])
     return Grid(data=data, column_info=column_info, grid_info=grid_info)
 
 
@@ -265,4 +265,4 @@ def _set_datetime_index(data, colinfo):
     tz = colinfo.get('tz', DEFAULT_TZ)
     data.index = pd.DatetimeIndex(data[0].str.rstrip(tz).str.rstrip())
     data.index.name = 'ts'
-    data.drop([0], axis=1, inplace=True)
+    return data.drop([0], axis=1)
