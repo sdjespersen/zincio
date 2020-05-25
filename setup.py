@@ -6,11 +6,12 @@ setup(
     description='Parsing/dumping for Project Haystack Zinc file format',
     version='0.0.1',
     author='Scott Jespersen',
-    license='BSD',
+    license='MIT',
     packages=[
         'pyzinc',
     ],
     requires=[
+        'numpy',
         'pandas',
     ],
 )
