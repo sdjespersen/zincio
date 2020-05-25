@@ -1,6 +1,20 @@
+# Python artifacts
 __pycache__/
-build/
+
+# Pytest (testing)
 .pytest_cache/
+
+# MyPy (type checking)
 .mypy_cache/
+
+# Mac OS X artifacts
 .DS_Store
+
+# Python packaging artifacts
 *.egg-info/
+build/
+
+# Built documentation files
+_build/
+_static/
+_templates/
