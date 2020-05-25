@@ -12,6 +12,7 @@ __pycache__/
 
 # Python packaging artifacts
 *.egg-info/
+.eggs/
 build/
 
 # Built documentation files
