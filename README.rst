@@ -1,6 +1,6 @@
-===========================================
-pyzinc: Project Haystack Zinc I/O in Python
-===========================================
+===============================================
+zincio: Read/write Project Haystack Zinc Format
+===============================================
 
 Overview
 ========
@@ -11,7 +11,7 @@ Zinc-format strings to and from a ``Grid``.
 
 Other Python libraries for Zinc exist, notably `hszinc
 <https://github.com/widesky/hszinc>`_. So why this library? Basically only one
-reason: `performance`_. However, pyzinc does not have feature parity with
+reason: `performance`_. However, zincio does not have feature parity with
 hszinc library, so this comparison is not yet fair.
 
 **Note:** This implementation does not claim to adhere to the Zinc spec yet,
@@ -24,9 +24,9 @@ Getting Started
 
 .. code:: python
 
-  import pyzinc
+  import zincio
 
-The API mimics the Pandas API, reflecting to the similarity in use cases.
+The API mimics the Pandas API, reflecting the similarity in use cases.
 
 Consider the file ``examples/example.zinc`` (available in the repo)::
 
@@ -42,9 +42,9 @@ you can load it with
 
 .. code:: python
 
-  grid = pyzinc.read_zinc("examples/example.zinc")
+  grid = zincio.read_zinc("examples/example.zinc")
 
-which returns a ``pyzinc.Grid`` instance. Writing the grid to file (or
+which returns a ``zincio.Grid`` instance. Writing the grid to file (or
 returning it as a string) is as in Pandas:
 
 .. code:: python
@@ -60,7 +60,7 @@ returning it as a string) is as in Pandas:
   2020-05-18T01:13:09-07:00 Los_Angeles,
 
 
-A ``pyzinc.Grid`` has three main
+A ``zincio.Grid`` has three main
 elements:
 
 * A ``grid_info`` attribute consisting of metadata about the entire ``Grid``.
@@ -106,16 +106,16 @@ Run ``bench/benchmark.py`` for these numbers.
 
 On a 59KB Zinc Grid with 16 columns and 287 rows (``small_example.zinc``):
 
-* ``pyzinc.read_zinc`` takes 45ms
+* ``zincio.read_zinc`` takes 45ms
 * ``hszinc.parse`` takes about 7.84 seconds
 
 On a 107KB Zinc Grid with 32 columns and 287 rows (``medium_example.zinc``):
 
-* ``pyzinc.read_zinc`` takes 88ms
+* ``zincio.read_zinc`` takes 88ms
 * ``hszinc.parse`` takes about 15.2 seconds
 
-In other words, ``pyzinc.read_zinc`` is about 200x faster than
+In other words, ``zincio.read_zinc`` is about 200x faster than
 ``hszinc.parse``, mostly thanks to using ``pandas.read_csv`` under the hood.
 
-On a larger 11MB Grid with 2002 columns and 849 rows, ``pyzinc.read_zinc``
+On a larger 11MB Grid with 2002 columns and 849 rows, ``zincio.read_zinc``
 took 37.6 seconds, and ``hszinc.parse`` did not terminate within 10 minutes.

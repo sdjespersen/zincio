@@ -1,8 +1,8 @@
 import hszinc
 import timeit
+import zincio
 
 from pathlib import Path
-from pyzinc import pyzinc
 
 
 def get_abspath(relpath):
@@ -24,19 +24,19 @@ MEDIUM_FILENAME = get_abspath("medium_example.zinc")
 small_example = read_file(SMALL_FILENAME)
 medium_example = read_file(MEDIUM_FILENAME)
 
-print(f"parsing {SMALL_FILENAME} with pyzinc...")
-pyzinc_total = timeit.timeit(
-    lambda: pyzinc.read_zinc(SMALL_FILENAME), number=20)
-print(f"parsing with pyzinc took {pyzinc_total / 20} seconds, avg of 20")
+print(f"parsing {SMALL_FILENAME} with zincio...")
+zincio_total = timeit.timeit(
+    lambda: zincio.read_zinc(SMALL_FILENAME), number=20)
+print(f"parsing with zincio took {zincio_total / 20} seconds, avg of 20")
 
 print(f"parsing {SMALL_FILENAME} with hszinc...")
 hszinc_total = timeit.timeit(lambda: hszinc.parse(small_example), number=5)
 print(f"parsing with hszinc took {hszinc_total / 5} seconds, avg of 5")
 
-print(f"parsing {MEDIUM_FILENAME} with pyzinc...")
-pyzinc_total = timeit.timeit(
-    lambda: pyzinc.read_zinc(MEDIUM_FILENAME), number=20)
-print(f"parsing with pyzinc took {pyzinc_total / 20} seconds, avg of 20")
+print(f"parsing {MEDIUM_FILENAME} with zincio...")
+zincio_total = timeit.timeit(
+    lambda: zincio.read_zinc(MEDIUM_FILENAME), number=20)
+print(f"parsing with zincio took {zincio_total / 20} seconds, avg of 20")
 
 print(f"parsing {MEDIUM_FILENAME} with hszinc...")
 hszinc_total = timeit.timeit(lambda: hszinc.parse(medium_example), number=5)

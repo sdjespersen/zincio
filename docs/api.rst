@@ -1,5 +1,5 @@
 API Documentation
 =================
 
-.. automodule:: pyzinc
+.. automodule:: zincio
    :members:

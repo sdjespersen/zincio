@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'pyzinc'
+project = 'zincio'
 copyright = '2020, Scott Jespersen'
 author = 'Scott Jespersen'
 
@@ -54,7 +54,7 @@ html_theme = 'alabaster'
 html_theme_options = {
     "show_powered_by": False,
     "github_user": "sdjespersen",
-    "github_repo": "pyzinc",
+    "github_repo": "zincio",
     "github_banner": True,
     "show_related": False,
     "note_bg": "#FFF59C",
