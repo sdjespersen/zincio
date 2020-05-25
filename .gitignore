@@ -14,6 +14,7 @@ __pycache__/
 *.egg-info/
 .eggs/
 build/
+dist/
 
 # Built documentation files
 _build/
