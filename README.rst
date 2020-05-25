@@ -1,1 +1,1 @@
-.. include:: docs/api
+docs/index.rst
