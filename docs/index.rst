@@ -9,13 +9,12 @@ pyzinc: Project Haystack Zinc I/O in Python
 
    api
 
-
 Overview
 ========
 
 `Zinc <https://project-haystack.org/doc/Zinc>`_ is a CSV-like format for
-Project Haystack. This project exists solely to make it simple—and *fast!*—to
-load Zinc-format strings into a ``Grid``.
+Project Haystack. This library makes it easy—and fast—to read and write
+Zinc-format strings to and from a ``Grid``.
 
 Other Python libraries for Zinc exist, notably `hszinc
 <https://github.com/widesky/hszinc>`_. So why this library? Basically only one
@@ -27,12 +26,16 @@ and it likely never will; the spec includes support for things like nested
 Grids, which completely upend the assumptions of tabular data. This library
 sacrifices some completeness for speed.
 
-Example usage
-=============
+Getting Started
+===============
 
-The API mimics the Pandas API, due to the similarity in use cases.
+.. code:: python
 
-Consider the file ``examples/example.zinc``::
+  import pyzinc
+
+The API mimics the Pandas API, reflecting to the similarity in use cases.
+
+Consider the file ``examples/example.zinc`` (available in the repo)::
 
   ver:"3.0" view:"chart" hisStart:2020-05-18T00:00:00-07:00 Los_Angeles hisEnd:2020-05-18T01:15:00-07:00 Los_Angeles hisLimit:10000 dis:"Mon 18-May-2020"
   ts disKey:"ui::timestamp" tz:"Los_Angeles" chartFormat:"ka",v0 id:@p:q01b001:r:0197767d-c51944e4 "Building One VAV1-01 Eff Heat SP" navName:"Eff Heat SP" point his siteRef:@p:q01b001:r:8fc116f8-72c5320c "Building One" equipRef:@p:q01b001:r:b78a8dcc-828caa1b "Building One VAV1-01" curVal:65.972°F curStatus:"ok" kind:"Number" unit:"°F" tz:"Los_Angeles" sp temp cur haystackPoint air effective heating
@@ -46,14 +49,30 @@ you can load it with
 
 .. code:: python
 
-  import pyzinc
+  grid = pyzinc.read_zinc("examples/example.zinc")
 
-  grid = pyzinc.read_zinc("examples/example.zinc")  # -> pyzinc.Grid
+which returns a ``pyzinc.Grid`` instance. Writing the grid to file (or
+returning it as a string) is as in Pandas:
 
-A ``Grid`` has three main constituents:
+.. code:: python
 
-* A ``grid_info`` attribute consisting of metadata about the entire ``Grid``
-* A ``column_info`` attribute consisting of metadata about each individual column
+  >>> grid.to_zinc("example_output.zinc")
+  >>> print(grid.to_zinc())
+  ver:"3.0" view:"chart" hisStart:2020-05-18T00:00:00-07:00 Los_Angeles hisEnd:2020-05-18T01:15:00-07:00 Los_Angeles hisLimit:10000 dis:"Mon 18-May-2020"
+  ts disKey:"ui::timestamp" tz:"Los_Angeles" chartFormat:"ka",v0 id:@p:q01b001:r:0197767d-c51944e4 "Building One VAV1-01 Eff Heat SP" navName:"Eff Heat SP" point his siteRef:@p:q01b001:r:8fc116f8-72c5320c "Building One" equipRef:@p:q01b001:r:b78a8dcc-828caa1b "Building One VAV1-01" curVal:65.972°F curStatus:"ok" kind:"Number" unit:"°F" tz:"Los_Angeles" sp temp cur haystackPoint air effective heating
+  2020-05-17T23:47:08-07:00 Los_Angeles,
+  2020-05-17T23:55:00-07:00 Los_Angeles,68.553°F
+  2020-05-18T00:00:00-07:00 Los_Angeles,68.554°F
+  2020-05-18T00:05:00-07:00 Los_Angeles,69.723°F
+  2020-05-18T01:13:09-07:00 Los_Angeles,
+
+
+A ``pyzinc.Grid`` has three main
+elements:
+
+* A ``grid_info`` attribute consisting of metadata about the entire ``Grid``.
+* A ``column_info`` attribute consisting of metadata about each individual
+  column, including, e.g., pertinent tags.
 * A ``data()`` method, which returns the underlying tabular data as a
   ``pandas.DataFrame`` or ``pandas.Series``.
 
@@ -82,6 +101,8 @@ Here they are, in action:
   2020-05-18 00:00:00-07:00                                             68.554
   2020-05-18 00:05:00-07:00                                             69.723
   2020-05-18 01:13:09-07:00                                                NaN
+
+Note especially that ``data()`` enables you to work with familiar Pandas objects.
 
 For more details, see the `API docs <api.html>`_.
 

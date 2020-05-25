@@ -10,6 +10,19 @@ from .typing import ColumnInfoType, GridInfoType
 YMD_HMS_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
 
+def _stringify_tag(k, v):
+    if v is MARKER:
+        return str(k)
+    elif isinstance(v, str):
+        return f"{k}:\"{v}\""
+    else:
+        return f"{k}:{v}"
+
+
+def _stringify_tags(tags):
+    return [_stringify_tag(k, v) for k, v in tags.items()]
+
+
 class Grid:
     """A tabular data frame for Project Haystack.
 
@@ -62,6 +75,9 @@ class Grid:
             squeeze: bool, default True
                 Whether to return a `pd.Series` if this Grid consists of only
                 one column. Otherwise, a `pd.DataFrame` is returned.
+        Returns:
+            A `pd.DataFrame` or `pd.Series` containing the tabular data in the
+            Grid, depending on the value of `squeeze`.
         """
         if len(self._data.columns) == 1 and squeeze:
             return self._data[self._data.columns[0]]
@@ -74,6 +90,9 @@ class Grid:
             path: str or file handle, default None
                 File path or object. If None is provided, the result is
                 returned as a string. Otherwise, object is written to file.
+        Returns:
+            The Zinc-formatted string representation of the grid if path is not
+            None, otherwise None.
         """
         gridinfostr = self._grid_info_str()
         columninfostr = self._column_info_str()
@@ -83,30 +102,16 @@ class Grid:
                 f.write(gridinfostr + "\n")
                 f.write(columninfostr + "\n")
                 df.to_csv(f, mode="a", header=False)
+            return None
         return "\n".join([gridinfostr, columninfostr, df.to_csv(header=False)])
 
     def _grid_info_str(self):
-        tags = []
-        for k, v in self.grid_info.items():
-            if v is MARKER:
-                tags.append(str(k))
-            elif isinstance(v, str):
-                tags.append(f"{k}:\"{v}\"")
-            else:
-                tags.append(f"{k}:{v}")
-        return " ".join(tags)
+        return " ".join(_stringify_tags(self.grid_info))
 
     def _column_info_str(self):
         cols = []
         for colname, tags in self.column_info.items():
-            tagpairs = [colname]
-            for k, v in tags.items():
-                if v is MARKER:
-                    tagpairs.append(str(k))
-                elif isinstance(v, str):
-                    tagpairs.append(f"{k}:\"{v}\"")
-                else:
-                    tagpairs.append(f"{k}:{v}")
+            tagpairs = [colname] + _stringify_tags(tags)
             cols.append(" ".join(tagpairs))
         return ",".join(cols)
 
