@@ -52,8 +52,9 @@ you can load it with
 
   grid = zincio.read_zinc("examples/example.zinc")
 
-which returns a ``zincio.Grid`` instance. Writing the grid to file (or
-returning it as a string) is as in Pandas:
+which returns a ``zincio.Grid`` instance. There is also ``zincio.parse(str)``
+if you already have a string in memory. Writing the grid to file (or returning
+it as a string) is as in Pandas:
 
 .. code:: python
 

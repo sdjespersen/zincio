@@ -44,6 +44,21 @@ class ZincErrorGridException(Exception):
     pass
 
 
+def parse(s: str) -> Grid:
+    """Parses a string into a Grid."""
+    splits = s.split("\n", maxsplit=2)
+    if len(splits) < 2:
+        raise ZincParseException("Malformed input")
+    grid_info = _parse_zinc_grid_info(splits[0])
+    column_info = _parse_zinc_column_info(splits[1])
+    if len(splits) == 2:
+        logging.warn("Empty data")
+        return Grid(
+            data=pd.DataFrame(), column_info=column_info, grid_info=grid_info)
+    data = pd.read_csv(io.StringIO(splits[2]), header=None, na_values='N')
+    return _normalize_to_grid(grid_info, column_info, data)
+
+
 def read_zinc(filepath_or_buffer: FilePathOrBuffer) -> Grid:
     """Reads utf-8 encoded Zinc file or buffer to a Grid.
 
@@ -65,6 +80,13 @@ def read_zinc(filepath_or_buffer: FilePathOrBuffer) -> Grid:
             data = pd.read_csv(f, header=None, na_values='N')
         except pd.errors.EmptyDataError:
             logging.warn("Empty data")
+    return _normalize_to_grid(grid_info, column_info, data)
+
+
+def _normalize_to_grid(
+        grid_info: GridInfoType,
+        column_info: ColumnInfoType,
+        data: pd.DataFrame):
     renaming = {}
     for i, (k, v) in enumerate(column_info.items()):
         if i > 0:

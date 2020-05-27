@@ -25,6 +25,13 @@ def assert_grid_equal(a, b):
     pd.testing.assert_frame_equal(a.data(squeeze=False), b._data)
 
 
+def test_parse_zinc_grid_same_as_read_from_file():
+    with open(FULL_GRID_FILE) as f:
+        actual = zincio.parse(f.read())
+    expected = zincio.read_zinc(FULL_GRID_FILE)
+    assert_grid_equal(actual, expected)
+
+
 def test_read_zinc_grid():
     expected_grid_info = OrderedDict(
         ver="3.0",
