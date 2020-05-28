@@ -401,3 +401,74 @@ def test_read_zinc_stringio_same_as_file():
         raw = f.read()
     actual = zincio.read(io.StringIO(raw))
     assert_grid_equal(actual, expected)
+
+
+def test_parse_kitchen_sink_data():
+    raw_coord = 'C(37.427539, -122.170244)'
+    long_action_str = (
+        '"ver:\\"3.0\\"\\ndis,expr\\n\\"Override\\",\\"pointOverride(\\$self,'
+        ' \\$val, \\$duration)\\"\\n\\"Auto\\",\\"pointAuto(\\$self)\\"\\n"')
+    s = (
+         # grid meta
+         'ver:"3.0" '
+         'hisStart:2020-05-18T03:00:00-07:00 GMT-8 '
+         'hisEnd:2020-05-18T04:00:00-07:00 GMT-8 '
+         'mod:2020-03-23T23:36:40.343Z\n'
+         # column info
+         'ts,v0 id:@point.location "LatLng",'
+         'v1 id:@point.temp unit:"°F" link:`http://www.example.com/`,'
+         f'v2 id:@point.boolean actions:{long_action_str},'
+         'v3 id:@point.sometimes_inf_nan\n'
+         # rows
+         f'2020-05-18T03:00:00-07:00 GMT-8,{raw_coord},65.972°F,T,2.34E-3\n'
+         f'2020-05-18T03:05:00-07:00 GMT-8,{raw_coord},-13.232°F,F,INF\n'
+         f'2020-05-18T03:10:00-07:00 GMT-8,{raw_coord},85.103°F,N,NA\n'
+         f'2020-05-18T03:15:00-07:00 GMT-8,{raw_coord},44.072°F,T,NaN\n\n')
+    expected_grid_info = dict(
+        hisStart=zincio.Datetime(
+            pd.Timestamp("2020-05-18T03:00:00-07:00"), tz="GMT-8"),
+        hisEnd=zincio.Datetime(
+            pd.Timestamp("2020-05-18T04:00:00-07:00"), tz="GMT-8"),
+        mod=zincio.Datetime(pd.Timestamp('2020-03-23T23:36:40.343Z')),
+    )
+    expected_column_info = dict(
+        ts={},
+        v0=dict(id=zincio.Ref('point.location', 'LatLng')),
+        v1=dict(
+            id=zincio.Ref('point.temp'),
+            unit=zincio.String('°F'),
+            link=zincio.Uri('http://www.example.com/'),
+        ),
+        v2=dict(
+            id=zincio.Ref('point.boolean'),
+            actions=zincio.String(long_action_str.strip('"')),
+        ),
+        v3=dict(id=zincio.Ref('point.sometimes_inf_nan'))
+    )
+    coord = zincio.Coord(37.427539, -122.170244)
+    expected_data = pd.DataFrame(
+        data={
+            '@point.location "LatLng"': [coord, coord, coord, coord],
+            '@point.temp': [65.972, -13.232, 85.103, 44.072],
+            '@point.boolean': [True, False, None, True],
+            '@point.sometimes_inf_nan': [
+                0.00234, float("inf"), np.nan, np.nan,
+            ],
+        },
+        index=pd.Series(
+            data=[
+                pd.to_datetime('2020-05-18T03:00:00-07:00'),
+                pd.to_datetime('2020-05-18T03:05:00-07:00'),
+                pd.to_datetime('2020-05-18T03:10:00-07:00'),
+                pd.to_datetime('2020-05-18T03:15:00-07:00'),
+            ],
+            name='ts',
+        ),
+    )
+    expected = zincio.Grid(
+        version=3,
+        grid_info=expected_grid_info,
+        column_info=expected_column_info,
+        data=expected_data)
+    actual = zincio.parse(s)
+    assert_grid_equal(actual, expected)

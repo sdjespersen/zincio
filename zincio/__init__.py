@@ -1,40 +1,39 @@
-# TODO: Carefully determine what to actually expose...
 from .dtypes import (
     NULL,
     MARKER,
     REMOVE,
     NA,
+    NAN,
+    Coord,
     Datetime,
     Number,
     Ref,
-    Uri,
     String,
+    Uri,
 )
 from .grid import Grid
-from . import tokens
 from .zinc_parser import (
     parse,
     read,
     ZincErrorGridException,
     ZincParseException,
 )
-from .zinc_tokenizer import tokenize
 
 __all__ = [
     'NULL',
     'MARKER',
     'REMOVE',
     'NA',
+    'NAN',
+    'Coord',
     'Datetime',
     'Number',
     'Ref',
-    'Uri',
     'String',
+    'Uri',
     'Grid',
     'parse',
     'read',
     'ZincParseException',
     'ZincErrorGridException',
-    'tokenize',
-    'tokens'
 ]

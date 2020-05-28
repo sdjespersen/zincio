@@ -18,6 +18,7 @@ from .dtypes import (
     Ref,
     Scalar,
     String,
+    Uri,
     XStr,
 )
 from .grid import Grid, GridBuilder
@@ -195,6 +196,8 @@ class ZincParser:
             return self._parse_ref()
         if self._cur.ttype is TokenType.STRING:
             return self._parse_string()
+        if self._cur.ttype is TokenType.URI:
+            return self._parse_uri()
         if self._cur.ttype is TokenType.COORD:
             return self._parse_coord()
         if self._cur.ttype is TokenType.XSTR:
@@ -243,9 +246,14 @@ class ZincParser:
         raise ZincParseException(f"Unparseable ref token {''.join(parts)}")
 
     def _parse_string(self) -> String:
-        val = self._cur.val
+        val: str = self._cur.val
         self._consume()
         return String(val)
+
+    def _parse_uri(self) -> Uri:
+        val: str = self._cur.val
+        self._consume()
+        return Uri(val)
 
     def _parse_datetime(self) -> Datetime:
         parts = self._cur.val.split(" ")

@@ -1,4 +1,5 @@
-from zincio import tokens, tokenize
+from zincio import tokens
+from zincio.zinc_tokenizer import tokenize
 from zincio.tokens import NumberToken, TokenType, Token
 
 
