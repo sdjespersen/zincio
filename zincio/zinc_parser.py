@@ -1,6 +1,6 @@
 import io
 from os import PathLike
-import pandas as pd
+import pandas as pd  # type: ignore
 from typing import Dict, IO, List, Optional, Union
 
 from .dtypes import (
@@ -24,11 +24,11 @@ from .dtypes import (
 )
 from .grid import Grid, GridBuilder
 from . import tokens
-from .tokens import TokenType
+from .tokens import NumberToken, Token, TokenType
 from .zinc_tokenizer import ZincTokenizer
 
 # Type alias
-FilePathOrBuffer = Union[str, bytes, int, PathLike]
+FilePathOrBuffer = Union[str, bytes, int, PathLike, io.StringIO]
 
 
 class ZincParseException(Exception):
@@ -70,12 +70,12 @@ class ZincParser:
     """ZincParser parses a Zinc-format string into a Grid."""
 
     def __init__(self, tokenizer: ZincTokenizer):
-        self._tokenizer = tokenizer
-        self._cur = None
-        self._peek = None
-        self._cur_line = 0
-        self._peek_line = 0
-        self._version = 3
+        self._tokenizer: ZincTokenizer = tokenizer
+        self._cur: Token = tokens.EOF
+        self._peek: Token = tokens.EOF
+        self._cur_line: int = 0
+        self._peek_line: int = 0
+        self._version: int = 3
         self._consume()
         self._consume()
 
@@ -113,11 +113,11 @@ class ZincParser:
         self._consume_i(tokens.NEWLINE)
 
         # Column definitions
-        num_cols = 0  # type: int
+        num_cols: int = 0
         while self._cur.ttype is TokenType.ID:
             num_cols += 1
-            colname = self._consume_tag_name()
-            col_meta = {}
+            colname: str = self._consume_tag_id()
+            col_meta: Dict[str, AbstractScalar] = {}
             if self._cur.ttype is TokenType.ID:
                 col_meta = self._parse_dict()
             gb.add_col(colname, col_meta)
@@ -134,10 +134,10 @@ class ZincParser:
                 break
 
             # read cells
-            cells = []
+            cells: List[AbstractScalar] = []
             for i in range(num_cols):
                 if self._cur in (tokens.COMMA, tokens.NEWLINE, tokens.EOF):
-                    cells.append(None)
+                    cells.append(NULL)
                 else:
                     cells.append(self._parse_val())
                 if i + 1 < num_cols:
@@ -154,19 +154,6 @@ class ZincParser:
         return gb.build()
 
     def _parse_val(self) -> AbstractScalar:
-        # If it's an ID
-        if self._cur.ttype is TokenType.ID:
-            id_str = self._cur.val
-            self._consume_t(TokenType.ID)
-            # check for coord or xstr
-            if self._cur is tokens.LPAREN:
-                if self._peek.ttype is TokenType.NUMBER:
-                    return self._parse_coord(id_str)
-                else:
-                    return self._parse_xstr(id_str)
-            raise ZincParseException(f"Unexpected identifier: {id_str}")
-
-        # If it's a reserved keyword
         if self._cur.ttype is TokenType.RESERVED:
             v = self._cur
             self._consume_t(TokenType.RESERVED)
@@ -188,7 +175,7 @@ class ZincParser:
                 return NAN
             raise ZincParseException(f"Unrecognized reserved token {v}")
 
-        if self._cur.ttype is TokenType.NUMBER:
+        if isinstance(self._cur, NumberToken):
             uidx = self._cur.unit_index
             raw = self._cur.val
             units = None
@@ -210,6 +197,10 @@ class ZincParser:
             return self._parse_ref()
         if self._cur.ttype is TokenType.STRING:
             return self._parse_string()
+        if self._cur.ttype is TokenType.COORD:
+            return self._parse_coord()
+        if self._cur.ttype is TokenType.XSTR:
+            raise NotImplementedError("XStr support not implemented yet!")
 
         # -INF
         if self._cur is tokens.MINUS and self._peek.val == "INF":
@@ -231,15 +222,15 @@ class ZincParser:
 
         raise ZincParseException(f"Unexpected token: {self._cur}")
 
-    def _parse_coord(self, id_str: str) -> Coord:
-        if id_str != "C":
-            raise ZincParseException(f"Expected 'C' for coord, not {id_str}")
-        self._consume_i(tokens.LPAREN)
-        lat = self._consume_num()
-        self._consume_i(tokens.COMMA)
-        lng = self._consume_num()
-        self._consume_i(tokens.RPAREN)
-        return Coord(lat.val, lng.val)
+    def _parse_coord(self) -> Coord:
+        v = self._cur.val
+        try:
+            lat, lng = v.lstrip('C(').rstrip(')').split(',')
+            parsed = Coord(float(lat), float(lng))
+        except Exception:
+            raise ZincParseException(f"Could not parse {v} as Coord")
+        self._consume_t(TokenType.COORD)
+        return parsed
 
     def _parse_xstr(self) -> XStr:
         raise NotImplementedError("XStr support not implemented yet!")
@@ -266,32 +257,31 @@ class ZincParser:
             # we have a timestamp and a tz
             return Datetime(ts, parts[1])
         if len(parts) == 1:
-            return Datetime(ts, None)
+            return Datetime(ts)
         raise ZincParseException(f"Invalid datetime: {self._cur.val}")
 
     def _parse_list(self) -> List[AbstractScalar]:
-        coll = []  # type: List[AbstractScalar]
-        self._consume(tokens.LBRACKET)
+        coll: List[AbstractScalar] = []
+        self._consume_i(tokens.LBRACKET)
         while self._cur != tokens.RBRACKET and self._cur != tokens.EOF:
             val = self._parse_val()
             coll.append(val)
             if self._cur is not tokens.COMMA:
                 break
-            self._consume(tokens.COMMA)
-        self._consume(tokens.RBRACKET)
+            self._consume_i(tokens.COMMA)
+        self._consume_i(tokens.RBRACKET)
         return coll
 
-    def _parse_dict(self) -> Dict:
-        db = {}
+    def _parse_dict(self) -> Dict[str, AbstractScalar]:
+        db: Dict[str, AbstractScalar] = {}
         braces = self._cur is tokens.LBRACE
         if braces:
             self._consume_i(tokens.LBRACE)
         while self._cur.ttype is TokenType.ID:
-            idstr = self._consume_tag_name()  # type: str
+            idstr: str = self._consume_tag_id()
             if not (idstr and idstr[0].islower()):
                 raise ZincParseException(f"Invalid dict tag name: {idstr}")
-
-            val = MARKER  # type: Marker
+            val: AbstractScalar = MARKER
             if self._cur is tokens.COLON:
                 self._consume_i(tokens.COLON)
                 val = self._parse_val()
@@ -300,19 +290,13 @@ class ZincParser:
             self._consume_i(tokens.RBRACE)
         return db
 
-    def _consume_tag_name(self) -> Id:
+    def _consume_tag_id(self) -> str:
         self._verify_type(TokenType.ID)
-        tag_name = self._cur.val
+        tag_name: str = self._cur.val
         if not (tag_name and tag_name[0].islower()):
             raise ZincParseException(f"Invalid dict tag name: {tag_name}")
         self._consume_t(TokenType.ID)
         return tag_name
-
-    def _consume_num(self) -> Number:
-        self._verify_type(TokenType.NUMBER)
-        val = self._cur.val
-        self._consume_t(TokenType.NUMBER)
-        return val
 
     def _consume_str(self) -> String:
         self._verify_type(TokenType.STRING)

@@ -1,6 +1,6 @@
 import io
 
-from typing import Iterable, IO
+from typing import Iterable, Iterator, IO, List
 
 from . import tokens
 from .tokens import NumberToken, Token, TokenType
@@ -44,7 +44,7 @@ def tokenize_buf(buf: IO) -> Iterable[Token]:
             break
 
 
-class ZincTokenizer:
+class ZincTokenizer(Iterator[Token]):
     """Tokenizer for the Zinc format.
 
     Adapted from the Java reference implementation by Brian Frank.
@@ -52,11 +52,11 @@ class ZincTokenizer:
     FMI: https://project-haystack.org/doc/Zinc
     """
 
-    def __init__(self, buf: IO):
-        self._buf = buf  # type: IO
-        self._cur = None  # type: str
-        self._peek = None  # type: str
-        self.line = 0  # type: int
+    def __init__(self, buf: IO) -> None:
+        self._buf: IO = buf
+        self._cur: str = ''
+        self._peek: str = ''
+        self.line: int = 0
         self._consume()
         self._consume()
 
@@ -97,14 +97,14 @@ class ZincTokenizer:
         # otherwise, symbol
         return self._tokenize_symbol()
 
-    def _tokenize_id(self):
+    def _tokenize_id(self) -> Token:
         s = []
         while self._cur != EOF and _is_id_part(self._cur):
             s.append(self._cur)
             self._consume()
         return Token(TokenType.ID, ''.join(s))
 
-    def _tokenize_coord(self):
+    def _tokenize_coord(self) -> Token:
         s = ['C', '(']
         self._consume('C')
         self._consume('(')
@@ -137,7 +137,7 @@ class ZincTokenizer:
             raise ZincTokenizerException(f"Invalid float {v}")
         return v
 
-    def _tokenize_reserved(self):
+    def _tokenize_reserved(self) -> Token:
         s = []
         while self._cur != EOF and _is_letter(self._cur):
             s.append(self._cur)
@@ -162,14 +162,14 @@ class ZincTokenizer:
 
         raise ZincTokenizerException(f"Invalid token {v}")
 
-    def _tokenize_num(self):
+    def _tokenize_num(self) -> Token:
         def _is_unit(c: str):
             return c != EOF and (c in ('%', '$', '/') or ord(c) > 128)
         if self._cur == '0' and self._peek == 'x':
             self._tokenize_hex()
 
         # consume all things that might be part of this number token
-        s = []
+        s: List[str] = []
         colons = 0
         dashes = 0
         unit_index = 0
@@ -213,13 +213,13 @@ class ZincTokenizer:
         if dashes == 2 and colons == 0:
             return Token(TokenType.DATE, ''.join(s))
         if dashes == 0 and colons >= 1:
-            return self._tokenize_time(''.join(s), 1)
+            return self._tokenize_as_time(''.join(s), 1)
         if dashes >= 2:
-            return self._tokenize_datetime(''.join(s))
+            return self._tokenize_as_datetime(''.join(s))
 
         return NumberToken(''.join(s), unit_index)
 
-    def _tokenize_hex(self):
+    def _tokenize_hex(self) -> Token:
         self._consume('0')
         self._consume('x')
         s = []
@@ -231,16 +231,17 @@ class ZincTokenizer:
             if self._cur == '_':
                 continue
             break
-        return Token(TokenType.HEX, ''.join(s), base=16)
+        return Token(TokenType.HEX, ''.join(s))
 
-    def _tokenize_time(self, s: str, colons: int) -> Token:
+    def _tokenize_as_time(self, s: str, colons: int) -> Token:
         if s and s[1] == ':':
             s = '0' + s
         if self._peek is not EOF and self._peek.isupper():
             tz = self._consume_timezone()
             return Token(TokenType.TIME, s + tz)
+        raise ZincTokenizerException(f"Invalid time token {s}")
 
-    def _tokenize_datetime(self, s: str) -> Token:
+    def _tokenize_as_datetime(self, s: str) -> Token:
         if self._peek is not EOF and self._peek.isupper():
             tz = self._consume_timezone()
             return Token(TokenType.DATETIME, s + tz)
@@ -264,7 +265,7 @@ class ZincTokenizer:
                     self._consume()
         return ''.join(tz)
 
-    def _tokenize_str(self):
+    def _tokenize_str(self) -> Token:
         self._consume('"')
         s = []
         while True:
@@ -280,7 +281,7 @@ class ZincTokenizer:
             self._consume()
         return Token(TokenType.STRING, ''.join(s))
 
-    def _tokenize_ref(self):
+    def _tokenize_ref(self) -> Token:
         def _is_ref_char(c: str) -> bool:
             return _is_letter(c) or _is_digit(c) or c in '_:-.~'
         self._consume('@')
@@ -298,7 +299,7 @@ class ZincTokenizer:
                 break
         return Token(TokenType.REF, ''.join(s))
 
-    def _tokenize_uri(self):
+    def _tokenize_uri(self) -> Token:
         self._consume('`')
         s = []
         while True:
@@ -310,9 +311,9 @@ class ZincTokenizer:
             if self._cur == '\\':
                 if self._peek in ':/?#[]@\\&=;':
                     s.append(self._cur)
-                    s._consume()
+                    self._consume()
                     s.append(self._cur)
-                    s._consume()
+                    self._consume()
                 else:
                     s.append(self._escape())
             else:
@@ -320,20 +321,20 @@ class ZincTokenizer:
                 self._consume()
         return Token(TokenType.URI, ''.join(s))
 
-    def _escape(self):
+    def _escape(self) -> str:
         self._consume('\\')
         if self._cur in 'bfnrt"$\'`\\':
-            s = '\\' + self._cur
+            s = '\\' + self._cur  # type: str
             self._consume()
             return s
         # check for uxxxx
         if self._cur == 'u':
-            s = []
+            coll = []  # type: List[str]
             self._consume('u')
             for _ in range(4):
-                s.append(self._cur)
+                coll.append(self._cur)
                 self._consume()
-            s = ''.join(s)
+            s = ''.join(coll)
             try:
                 return chr(int(s, base=16))
             except ValueError:
@@ -341,7 +342,7 @@ class ZincTokenizer:
                     f"Invalid unicode sequence: {s}")
         raise ZincTokenizerException(f"Invalid escape sequence: {self._cur}")
 
-    def _tokenize_symbol(self):
+    def _tokenize_symbol(self) -> Token:
         c = self._cur
         self._consume()
         if c == ',':
@@ -364,18 +365,18 @@ class ZincTokenizer:
             return tokens.RPAREN
         elif c == '<':
             if self._cur == '<':
-                self.consume('<')
+                self._consume('<')
                 return tokens.DOUBLELT
             if self._cur == '=':
-                self.consume('=')
+                self._consume('=')
                 return tokens.LTEQ
             return tokens.LT
         elif c == '>':
             if self._cur == '>':
-                self.consume('>')
+                self._consume('>')
                 return tokens.DOUBLEGT
             if self._cur == '=':
-                self.consume('=')
+                self._consume('=')
                 return tokens.GTEQ
             return tokens.GT
         elif c == '-':
@@ -397,7 +398,7 @@ class ZincTokenizer:
             return tokens.SLASH
         raise ZincTokenizerException(f"Unexpected symbol: '{c}'")
 
-    def _consume(self, expected=None):
+    def _consume(self, expected=None) -> None:
         if expected is not None and self._cur != expected:
             raise ZincTokenizerException(
                 f"Expected {expected} but found {self._cur}")

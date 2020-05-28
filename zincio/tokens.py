@@ -39,6 +39,7 @@ class TokenType(Enum):
     URI = auto()
     XSTR = auto()
     NUMBER = auto()
+    HEX = auto()
 
 
 class Token:

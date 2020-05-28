@@ -1,6 +1,6 @@
 """Zinc data types."""
 
-import numpy as np
+import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 from typing import Any, Optional, Union
@@ -72,16 +72,16 @@ BOOL_FALSE = Boolean(False)
 
 
 class Datetime(Scalar):
-    def __init__(self, val: pd.Timestamp, tz: Optional[str] = None):
-        self.val = val
-        self.tz = tz
+    def __init__(self, value: pd.Timestamp, tz: str = ''):
+        self.value: pd.Timestamp = value
+        self.tz: str = tz
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.val.isoformat()}, \"{self.tz}\")"
+        return f'{type(self).__name__}({self.value.isoformat()}, "{self.tz}")'
 
     def __str__(self):
-        s = self.val.isoformat()
-        if self.tz is not None:
+        s = self.value.isoformat()
+        if self.tz:
             s += " " + self.tz
         return s
 
@@ -90,7 +90,7 @@ class Datetime(Scalar):
             return False
         if other is self:
             return True
-        return self.val == other.val and self.tz == other.tz
+        return self.value == other.value and self.tz == other.tz
 
 
 class Number(Scalar):
@@ -122,11 +122,17 @@ NAN = Number(np.nan)
 
 class Coord(Scalar):
 
-    def __init__(self, lat: float, lng: float):
-        self.lat = lat
-        self.lng = lng
+    def __init__(self, lat: float, lng: float) -> None:
+        self.lat: float = lat
+        self.lng: float = lng
 
-    def __eq__(self, other):
+    def __repr__(self) -> str:
+        return f"C({self.lat},{self.lng})"
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __eq__(self, other: Any):
         if not isinstance(other, type(self)):
             return False
         if other is self:

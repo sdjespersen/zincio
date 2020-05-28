@@ -104,30 +104,34 @@ class Grid:
             The Zinc-formatted string representation of the grid if path is not
             None, otherwise None.
         """
-        gridinfostr = self._grid_info_str()
-        columninfostr = self._column_info_str()
-        df = self._zinc_format_data()
         if path is not None:
             with open(path, "w", encoding="utf-8") as f:
-                f.write(gridinfostr + "\n")
-                f.write(columninfostr + "\n")
-                df.to_csv(f, mode="a", header=False)
+                f.write(self._grid_info_str())
+                f.write("\n")
+                f.write(self._column_info_str())
+                f.write("\n")
+                self._zinc_format_data().to_csv(f, mode="a", header=False)
             return None
-        return "\n".join([gridinfostr, columninfostr, df.to_csv(header=False)])
+        else:
+            return "\n".join([
+                self._grid_info_str(),
+                self._column_info_str(),
+                self._zinc_format_data().to_csv(header=False)
+            ])
 
-    def _grid_info_str(self):
+    def _grid_info_str(self) -> str:
         return " ".join([
             f'ver:"{self.version}.0"'] + _stringify_tags(self.grid_info))
 
-    def _column_info_str(self):
-        cols = []
+    def _column_info_str(self) -> str:
+        cols: List[str] = []
         for colname, tags in self.column_info.items():
             tagpairs = [colname] + _stringify_tags(tags)
             cols.append(" ".join(tagpairs))
         return ",".join(cols)
 
-    def _zinc_format_data(self):
-        df = self.data.copy()
+    def _zinc_format_data(self) -> pd.DataFrame:
+        df: pd.DataFrame = self.data.copy()
         for i, colinfo in enumerate(self.column_info.values()):
             # Format datetime index as appropriate
             if i == 0:
@@ -139,10 +143,10 @@ class Grid:
                     df.index += " " + str(colinfo['tz'])
             # Append units to columns where relevant
             elif i >= 1:
-                colname = df.columns[i-1]
+                colname: str = df.columns[i-1]
                 if "unit" in colinfo:
-                    notna = df[colname].notna()
-                    unit = str(colinfo["unit"])
+                    notna: pd.Series = df[colname].notna()
+                    unit: str = str(colinfo["unit"])
                     df.loc[notna, colname] = (
                         df.loc[notna, colname].astype(str) + unit)
         return df
@@ -156,14 +160,14 @@ class GridBuilder:
 
     def __init__(self, version: int):
         self.version = version
-        self.grid_meta = None
-        self.col_meta: Dict[str, AbstractScalar] = {}
+        self.grid_meta: Dict[str, Any] = {}
+        self.col_meta: Dict[str, Dict[str, AbstractScalar]] = {}
         self.cols: Dict[str, List[AbstractScalar]] = {}
 
     def add_meta(self, grid_meta: Dict[str, Any]):
         self.grid_meta = grid_meta
 
-    def add_col(self, colname: str, col: Dict[str, Dict[str, Any]]):
+    def add_col(self, colname: str, col: Dict[str, AbstractScalar]):
         self.col_meta[colname] = col
         self.cols[colname] = []
 
@@ -171,8 +175,12 @@ class GridBuilder:
         for k, v in zip(self.cols, row):
             self.cols[k].append(v)
 
-    def build(self):
-        idx = [x.val for x in self.cols.pop('ts')]
+    def build(self) -> Grid:
+        """Constructs and returns a Grid.
+
+        A GridBuilder instance cannot be safely reused!
+        """
+        idx = [x.value for x in self.cols.pop('ts')]
         df = pd.DataFrame(data=self.cols, index=idx)
         df.index.name = 'ts'
         # Rename columns with ID tag, if available
