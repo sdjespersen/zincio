@@ -211,9 +211,11 @@ class ZincParser:
 
         # Nested collections
         if self._cur is tokens.LBRACKET:
-            return self._parse_list()
+            # Could use self._parse_list() down the road, once types work out
+            raise NotImplementedError("List-valued Scalars not supported!")
         if self._cur is tokens.LBRACE:
-            return self._parse_dict()
+            # Could use self._parse_dict() down the road, once types work out
+            raise NotImplementedError("Dict-valued Scalars not supported!")
         if self._cur is tokens.DOUBLELT:
             raise NotImplementedError("Nested grids not supported!")
 
