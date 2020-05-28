@@ -142,8 +142,9 @@ class Grid:
                 colname = df.columns[i-1]
                 if "unit" in colinfo:
                     notna = df[colname].notna()
+                    unit = str(colinfo["unit"])
                     df.loc[notna, colname] = (
-                        df.loc[notna, colname].astype(str) + str(colinfo["unit"]))
+                        df.loc[notna, colname].astype(str) + unit)
         return df
 
 
@@ -205,6 +206,8 @@ def _pandasify(val: AbstractScalar) -> Any:
 def _pandasify_bool(val: AbstractScalar) -> Any:
     if isinstance(val, Boolean):
         return val.value
+    if val is NULL:
+        return None
     return val
 
 

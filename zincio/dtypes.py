@@ -1,5 +1,6 @@
 """Zinc data types."""
 
+import numpy as np
 import pandas as pd  # type: ignore
 
 from typing import Any, Optional, Union
@@ -14,25 +15,6 @@ class SentinelScalar(AbstractScalar):
 
     def __repr__(self):
         return type(self).__name__
-
-
-class Scalar(AbstractScalar):
-
-    def __init__(self, value: Any):
-        self.value = value
-
-    def __repr__(self):
-        return f"{type(self).__name__}({self.value})"
-
-    def __str__(self):
-        return str(self.value)
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return False
-        if other is self:
-            return True
-        return self.value == other.value
 
 
 class Null(SentinelScalar):
@@ -59,6 +41,26 @@ NULL = Null()
 MARKER = Marker()
 REMOVE = Remove()
 NA = Na()
+
+
+class Scalar(AbstractScalar):
+    """A scalar containing a primitive value."""
+
+    def __init__(self, value: Any):
+        self.value = value
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.value})"
+
+    def __str__(self):
+        return str(self.value)
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        if other is self:
+            return True
+        return self.value == other.value
 
 
 class Boolean(Scalar):
@@ -111,6 +113,11 @@ class Number(Scalar):
         if self.units is not None:
             s += str(self.units)
         return s
+
+
+POS_INF = Number(float("inf"))
+NEG_INF = Number(float("inf"))
+NAN = Number(np.nan)
 
 
 class Coord(Scalar):

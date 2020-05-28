@@ -8,6 +8,8 @@ from .dtypes import (
     MARKER,
     REMOVE,
     NA,
+    POS_INF,
+    NAN,
     BOOL_TRUE,
     BOOL_FALSE,
     AbstractScalar,
@@ -93,7 +95,6 @@ class ZincParser:
                 return 2
             raise ZincParseException(f"Unsupported Zinc version {s}")
 
-        # TODO: Support nested Grids. Actually, i'll probably never do that.
         if not (self._cur.ttype is TokenType.ID and self._cur.val == 'ver'):
             raise ZincParseException(
                 f"Expecting grid 'ver' identifier, but found {self._cur}")
@@ -167,24 +168,27 @@ class ZincParser:
 
         # If it's a reserved keyword
         if self._cur.ttype is TokenType.RESERVED:
-            v = self._cur.val
+            v = self._cur
             self._consume_t(TokenType.RESERVED)
-            if v == "T":
+            if v is tokens.TRUE:
                 return BOOL_TRUE
-            if v == "F":
+            if v is tokens.FALSE:
                 return BOOL_FALSE
-            if v == "N":
+            if v is tokens.NULL:
                 return NULL
-            if v == "M":
+            if v is tokens.MARKER:
                 return MARKER
-            if v == "NA":
+            if v is tokens.NA:
                 return NA
-            if v == "R":
+            if v is tokens.REMOVE:
                 return REMOVE
+            if v is tokens.POS_INF:
+                return POS_INF
+            if v is tokens.NAN:
+                return NAN
             raise ZincParseException(f"Unrecognized reserved token {v}")
 
         if self._cur.ttype is TokenType.NUMBER:
-            # TODO: Support "NaN", "INF"
             uidx = self._cur.unit_index
             raw = self._cur.val
             units = None
@@ -192,7 +196,10 @@ class ZincParser:
                 raw = self._cur.val[:uidx]
                 units = self._cur.val[uidx:]
             try:
-                qty = float(raw)
+                if '.' in raw:
+                    qty = float(raw)
+                else:
+                    qty = int(raw)
             except ValueError:
                 raise ZincParseException(
                     f"Invalid numeric token {self._cur}")
@@ -207,7 +214,7 @@ class ZincParser:
         # -INF
         if self._cur is tokens.MINUS and self._peek.val == "INF":
             self._consume_i(tokens.MINUS)
-            self._consume_i(tokens.ID)
+            self._consume_t(TokenType.ID)
             raise NotImplementedError("No NEG_INF yet!")
 
         # Nested collections
@@ -235,15 +242,6 @@ class ZincParser:
         return Coord(lat.val, lng.val)
 
     def _parse_xstr(self) -> XStr:
-        # {
-        # if (!Character.isUpperCase(id.charAt(0)))
-        #   throw err("Invalid XStr type: " + id);
-        # consume(HaystackToken.lparen);
-        # if (this.version < 3 && "Bin".equals(id)) return parseBinObsolete();
-        # String val = consumeStr();
-        # consume(HaystackToken.rparen);
-        # return HXStr.decode(id, val);
-        # }
         raise NotImplementedError("XStr support not implemented yet!")
 
     def _parse_ref(self) -> Ref:

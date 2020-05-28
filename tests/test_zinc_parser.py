@@ -344,6 +344,41 @@ def test_read_zinc_minimal_colinfo():
     assert_grid_equal(actual, expected)
 
 
+def test_parse_grid_with_sentinels():
+    s = ('ver:"3.0" hisEnd:M hisStart:M\n'
+         'ts,v0 id:@vrt.x02.motion_state,v1 id:@vrt.x03.motion_amount\n'
+         '2018-03-21T15:45:00+10:00 GMT-10,F,INF\n'
+         '2018-03-21T15:50:00+10:00 GMT-10,N,NA\n'
+         '2018-03-21T15:55:00+10:00 GMT-10,T,NaN\n\n')
+    expected_grid_info = dict(hisEnd=zincio.MARKER, hisStart=zincio.MARKER)
+    expected_column_info = dict(
+        ts=dict(),
+        v0=dict(id=zincio.Ref("vrt.x02.motion_state", None)),
+        v1=dict(id=zincio.Ref("vrt.x03.motion_amount", None)),
+    )
+    expected_data = pd.DataFrame(
+        data={
+            '@vrt.x02.motion_state': [False, None, True],
+            '@vrt.x03.motion_amount': [np.inf, np.nan, np.nan],
+        },
+        index=pd.Series(
+            data=[
+                pd.to_datetime('2018-03-21T15:45:00+10:00'),
+                pd.to_datetime('2018-03-21T15:50:00+10:00'),
+                pd.to_datetime('2018-03-21T15:55:00+10:00'),
+            ],
+            name='ts',
+        ),
+    )
+    expected = zincio.Grid(
+        version=3,
+        grid_info=expected_grid_info,
+        column_info=expected_column_info,
+        data=expected_data)
+    actual = zincio.parse(s)
+    assert_grid_equal(actual, expected)
+
+
 def test_read_zinc_malformed_grid():
     grid = 'this is not a legal grid'
     with pytest.raises(zincio.ZincParseException):
@@ -366,20 +401,3 @@ def test_read_zinc_stringio_same_as_file():
         raw = f.read()
     actual = zincio.read(io.StringIO(raw))
     assert_grid_equal(actual, expected)
-
-
-def test_grid_to_zinc_string():
-    with open(SINGLE_SERIES_FILE, encoding='utf-8') as f:
-        expected = f.read()
-    actual = zincio.read(SINGLE_SERIES_FILE).to_zinc()
-    assert actual == expected
-
-
-def test_grid_to_zinc_file(tmp_path):
-    with open(SINGLE_SERIES_FILE, encoding='utf-8') as f:
-        expected = f.read()
-    output_file = tmp_path / "output.zinc"
-    zincio.read(SINGLE_SERIES_FILE).to_zinc(output_file)
-    with open(output_file, encoding="utf-8") as f:
-        actual = f.read()
-    assert actual == expected

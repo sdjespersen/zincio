@@ -107,14 +107,16 @@ def test_tokenize_multiple_lines():
 
 
 def test_tokenize_sentinels_in_values():
-    s = ('ver:"2.0" hisEnd:M hisStart:M\n'
-         'ts,v0 id:@vrt.x02.motion_state\n'
-         '2018-03-21T15:45:00+10:00 GMT-10,F\n\n')
+    s = ('ver:"3.0" hisEnd:M hisStart:M\n'
+         'ts,v0 id:@vrt.x02.motion_state,v1 id:@vrt.x03.motion_amount\n'
+         '2018-03-21T15:45:00+10:00 GMT-10,F,INF\n'
+         '2018-03-21T15:50:00+10:00 GMT-10,N,NA\n'
+         '2018-03-21T15:55:00+10:00 GMT-10,T,NaN\n\n')
     actual = list(tokenize(s))
     expected = [
         Token(TokenType.ID, 'ver'),
         tokens.COLON,
-        Token(TokenType.STRING, '2.0'),
+        Token(TokenType.STRING, '3.0'),
         Token(TokenType.ID, 'hisEnd'),
         tokens.COLON,
         Token(TokenType.RESERVED, 'M'),
@@ -128,10 +130,59 @@ def test_tokenize_sentinels_in_values():
         Token(TokenType.ID, 'id'),
         tokens.COLON,
         Token(TokenType.REF, 'vrt.x02.motion_state'),
+        tokens.COMMA,
+        Token(TokenType.ID, 'v1'),
+        Token(TokenType.ID, 'id'),
+        tokens.COLON,
+        Token(TokenType.REF, 'vrt.x03.motion_amount'),
         tokens.NEWLINE,
         Token(TokenType.DATETIME, '2018-03-21T15:45:00+10:00 GMT-10'),
         tokens.COMMA,
-        Token(TokenType.RESERVED, 'F'),
+        tokens.FALSE,
+        tokens.COMMA,
+        tokens.POS_INF,
+        tokens.NEWLINE,
+        Token(TokenType.DATETIME, '2018-03-21T15:50:00+10:00 GMT-10'),
+        tokens.COMMA,
+        tokens.NULL,
+        tokens.COMMA,
+        tokens.NA,
+        tokens.NEWLINE,
+        Token(TokenType.DATETIME, '2018-03-21T15:55:00+10:00 GMT-10'),
+        tokens.COMMA,
+        tokens.TRUE,
+        tokens.COMMA,
+        tokens.NAN,
+        tokens.NEWLINE,
+        tokens.NEWLINE,
+        tokens.EOF,
+    ]
+    assert actual == expected
+
+
+def test_tokenize_coords():
+    s = ('ver:"3.0" hisStart:2020-05-18T03:00:00-07:00 Los_Angeles\n'
+         'ts,v0 id:@somepoint\n'
+         '2020-05-18T03:00:00-07:00 Los_Angeles,C(37.427539, -122.170244)\n\n')
+    actual = list(tokenize(s))
+    expected = [
+        Token(TokenType.ID, 'ver'),
+        tokens.COLON,
+        Token(TokenType.STRING, '3.0'),
+        Token(TokenType.ID, 'hisStart'),
+        tokens.COLON,
+        Token(TokenType.DATETIME, '2020-05-18T03:00:00-07:00 Los_Angeles'),
+        tokens.NEWLINE,
+        Token(TokenType.ID, 'ts'),
+        tokens.COMMA,
+        Token(TokenType.ID, 'v0'),
+        Token(TokenType.ID, 'id'),
+        tokens.COLON,
+        Token(TokenType.REF, 'somepoint'),
+        tokens.NEWLINE,
+        Token(TokenType.DATETIME, '2020-05-18T03:00:00-07:00 Los_Angeles'),
+        tokens.COMMA,
+        Token(TokenType.COORD, 'C(37.427539,-122.170244)'),
         tokens.NEWLINE,
         tokens.NEWLINE,
         tokens.EOF,

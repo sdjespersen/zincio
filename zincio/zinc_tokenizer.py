@@ -9,6 +9,7 @@ EOF = 'EOF'
 
 
 class ZincTokenizerException(Exception):
+    """An exception indicating that the string could not be tokenized."""
     pass
 
 
@@ -34,7 +35,7 @@ def tokenize(s: str) -> Iterable[Token]:
 
 
 def tokenize_buf(buf: IO) -> Iterable[Token]:
-    """Tokenize a Zinc-format buffer."""
+    """Tokenize a Zinc buffer."""
     tkzr = ZincTokenizer(buf)
     while True:
         tok = next(tkzr)
@@ -44,9 +45,11 @@ def tokenize_buf(buf: IO) -> Iterable[Token]:
 
 
 class ZincTokenizer:
-    """Tokenizer for Zinc format.
+    """Tokenizer for the Zinc format.
 
     Adapted from the Java reference implementation by Brian Frank.
+
+    FMI: https://project-haystack.org/doc/Zinc
     """
 
     def __init__(self, buf: IO):
@@ -74,16 +77,14 @@ class ZincTokenizer:
             return tokens.NEWLINE
 
         # handle various starting chars
+        if self._cur == EOF:
+            return tokens.EOF
         if _is_id_start(self._cur):
             return self._tokenize_id()
-        if self._cur == 'N' and self._peek == 'A':
-            self._consume('N')
-            self._consume('A')
-            return Token(TokenType.RESERVED, 'NA')
-        if self._cur in ('N', 'R', 'M', 'F', 'T'):
-            v = self._cur
-            self._consume(v)
-            return Token(TokenType.RESERVED, v)
+        if self._cur == 'C' and self._peek == '(':
+            return self._tokenize_coord()
+        if self._cur.isupper():
+            return self._tokenize_reserved()
         if self._cur == '"':
             return self._tokenize_str()
         if self._cur == '@':
@@ -103,12 +104,63 @@ class ZincTokenizer:
             self._consume()
         return Token(TokenType.ID, ''.join(s))
 
-    def _tokenize_reserved(self):
+    def _tokenize_coord(self):
+        s = ['C', '(']
+        self._consume('C')
+        self._consume('(')
+        # lat
+        s.append(self._consume_decimal_unscientific())
+        s.append(',')
+        self._consume(',')
+        # allow one optional space
+        if self._cur == ' ':
+            self._consume()
+        # lng
+        s.append(self._consume_decimal_unscientific())
+        s.append(')')
+        self._consume(')')
+        return Token(TokenType.COORD, ''.join(s))
+
+    def _consume_decimal_unscientific(self) -> str:
         s = []
-        while self._cur != EOF and self._cur.isupper():
+        if self._cur == '-':
             s.append(self._cur)
             self._consume()
-        return Token(TokenType.RESERVED, ''.join(s))
+        dots = 0
+        while _is_digit(self._cur) or self._cur == '.':
+            if self._cur == '.':
+                dots += 1
+            s.append(self._cur)
+            self._consume()
+        v = ''.join(s)
+        if dots > 1:
+            raise ZincTokenizerException(f"Invalid float {v}")
+        return v
+
+    def _tokenize_reserved(self):
+        s = []
+        while self._cur != EOF and _is_letter(self._cur):
+            s.append(self._cur)
+            self._consume()
+        v = ''.join(s)
+        if v == 'N':
+            return tokens.NULL
+        if v == 'M':
+            return tokens.MARKER
+        if v == 'R':
+            return tokens.REMOVE
+        if v == 'NA':
+            return tokens.NA
+        if v == 'NaN':
+            return tokens.NAN
+        if v == 'T':
+            return tokens.TRUE
+        if v == 'F':
+            return tokens.FALSE
+        if v == 'INF':
+            return tokens.POS_INF
+
+        raise ZincTokenizerException(f"Invalid token {v}")
 
     def _tokenize_num(self):
         def _is_unit(c: str):
@@ -118,7 +170,6 @@ class ZincTokenizer:
 
         # consume all things that might be part of this number token
         s = []
-        # self._consume()  # this was in the original, but seems wrong...
         colons = 0
         dashes = 0
         unit_index = 0
@@ -344,8 +395,6 @@ class ZincTokenizer:
             return tokens.BANG
         elif c == '/':
             return tokens.SLASH
-        if c == EOF:
-            return tokens.EOF
         raise ZincTokenizerException(f"Unexpected symbol: '{c}'")
 
     def _consume(self, expected=None):
