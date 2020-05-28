@@ -1,21 +1,40 @@
-from .dtypes import MARKER, Datetime, Quantity, Ref, URI
-from .grid import Grid
-from .zincio import (
-    parse,
-    read_zinc,
-    ZincParseException,
-    ZincErrorGridException,
+# TODO: Carefully determine what to actually expose...
+from .dtypes import (
+    NULL,
+    MARKER,
+    REMOVE,
+    NA,
+    Datetime,
+    Number,
+    Ref,
+    Uri,
+    String,
 )
+from .grid import Grid
+from . import tokens
+from .zinc_parser import (
+    parse,
+    read,
+    ZincErrorGridException,
+    ZincParseException,
+)
+from .zinc_tokenizer import tokenize
 
 __all__ = [
+    'NULL',
     'MARKER',
+    'REMOVE',
+    'NA',
     'Datetime',
-    'Quantity',
+    'Number',
     'Ref',
-    'URI',
+    'Uri',
+    'String',
     'Grid',
     'parse',
-    'read_zinc',
+    'read',
     'ZincParseException',
     'ZincErrorGridException',
+    'tokenize',
+    'tokens'
 ]

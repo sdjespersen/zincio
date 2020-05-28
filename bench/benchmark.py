@@ -26,7 +26,7 @@ medium_example = read_file(MEDIUM_FILENAME)
 
 print(f"parsing {SMALL_FILENAME} with zincio...")
 zincio_total = timeit.timeit(
-    lambda: zincio.read_zinc(SMALL_FILENAME), number=20)
+    lambda: zincio.parse(small_example), number=20)
 print(f"parsing with zincio took {zincio_total / 20} seconds, avg of 20")
 
 print(f"parsing {SMALL_FILENAME} with hszinc...")
@@ -35,9 +35,9 @@ print(f"parsing with hszinc took {hszinc_total / 5} seconds, avg of 5")
 
 print(f"parsing {MEDIUM_FILENAME} with zincio...")
 zincio_total = timeit.timeit(
-    lambda: zincio.read_zinc(MEDIUM_FILENAME), number=20)
+    lambda: zincio.parse(medium_example), number=20)
 print(f"parsing with zincio took {zincio_total / 20} seconds, avg of 20")
 
 print(f"parsing {MEDIUM_FILENAME} with hszinc...")
-hszinc_total = timeit.timeit(lambda: hszinc.parse(medium_example), number=5)
-print(f"parsing with hszinc took {hszinc_total / 5} seconds, avg of 5")
+hszinc_total = timeit.timeit(lambda: hszinc.parse(medium_example), number=3)
+print(f"parsing with hszinc took {hszinc_total / 3} seconds, avg of 3")

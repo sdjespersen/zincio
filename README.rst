@@ -14,8 +14,9 @@ Overview
 ========
 
 `Zinc <https://project-haystack.org/doc/Zinc>`_ is a CSV-like format for
-Project Haystack. This library makes it easy—and fast—to read and write
-Zinc-format strings to and from a ``Grid``.
+Project Haystack. This library makes it easy—and fast—to read Zinc to a
+``Grid``, to write a ``Grid`` back to Zinc, or to obtain a
+``pandas.DataFrame`` from a ``Grid``.
 
 Other Python libraries for Zinc exist, notably `hszinc
 <https://github.com/widesky/hszinc>`_. So why this library? Basically only one
@@ -23,18 +24,20 @@ reason: `performance`_. However, zincio does not have feature parity with
 hszinc library, so this comparison is not yet fair.
 
 **Note:** This implementation does not claim to adhere to the Zinc spec yet,
-and it likely never will; the spec includes support for things like nested
-Grids, which completely upend the assumptions of tabular data. This library
-sacrifices some completeness for speed.
+and it likely never will; in particular, the spec includes support for things
+like nested ``Grid``s, which completely upend the assumptions of tabular data.
+In a sense, this library is opinionated: ``Grid``s should not be nested. Hence
+this library sacrifices some completeness for speed.
 
 Getting Started
 ===============
 
+Install ``zincio`` from source (``pip install .``) or from PyPI
+(``pip install zincio``).
+
 .. code:: python
 
   import zincio
-
-The API mimics the Pandas API, reflecting the similarity in use cases.
 
 Consider the file ``examples/example.zinc`` (available in the repo)::
 
@@ -50,7 +53,7 @@ you can load it with
 
 .. code:: python
 
-  grid = zincio.read_zinc("examples/example.zinc")
+  grid = zincio.read("examples/example.zinc")
 
 which returns a ``zincio.Grid`` instance. There is also ``zincio.parse(str)``
 if you already have a string in memory. Writing the grid to file (or returning
@@ -69,24 +72,30 @@ it as a string) is as in Pandas:
   2020-05-18T01:13:09-07:00 Los_Angeles,
 
 
-A ``zincio.Grid`` has three main
-elements:
+A ``zincio.Grid`` has four primary attributes:
 
+* A ``version`` indicating the version of Zinc used.
 * A ``grid_info`` attribute consisting of metadata about the entire ``Grid``.
 * A ``column_info`` attribute consisting of metadata about each individual
   column, including, e.g., pertinent tags.
-* A ``data()`` method, which returns the underlying tabular data as a
-  ``pandas.DataFrame`` or ``pandas.Series``.
+* A ``data`` attribute, which contains the underlying tabular data as a
+  ``pandas.DataFrame``.
+
+A common use case is to immediately extract the tabular data from the ``Grid``
+as a ``pandas.DataFrame``; you can do this with the ``to_pandas`` method.
 
 Here they are, in action:
 
+  >>> grid.version
+  3
+
   >>> grid.grid_info
-  OrderedDict([('ver', '3.0'), ('view', 'chart'), ('hisStart', Datetime(2020-05-18T00:00:00-07:00, "Los_Angeles")), ('hisEnd', Datetime(2020-05-18T01:15:00-07:00, "Los_Angeles")), ('hisLimit', 10000), ('dis', 'Mon 18-May-2020')])
+  {'view': String(chart), 'hisStart': Datetime(2020-05-18T00:00:00-07:00, "Los_Angeles"), 'hisEnd': Datetime(2020-05-18T01:15:00-07:00, "Los_Angeles"), 'hisLimit': Number(10000.0, "None"), 'dis': String(Mon 18-May-2020)}
 
   >>> grid.column_info
-  OrderedDict([('ts', OrderedDict([('disKey', 'ui::timestamp'), ('tz', 'Los_Angeles'), ('chartFormat', 'ka')])), ('v0', OrderedDict([('id', Ref("p:q01b001:r:0197767d-c51944e4", "Building One VAV1-01 Eff Heat SP")), ('navName', 'Eff Heat SP'), ('point', MARKER), ('his', MARKER), ('siteRef', Ref("p:q01b001:r:8fc116f8-72c5320c", "Building One")), ('equipRef', Ref("p:q01b001:r:b78a8dcc-828caa1b", "Building One VAV1-01")), ('curVal', Quantity(65.972, "°F")), ('curStatus', 'ok'), ('kind', 'Number'), ('unit', '°F'), ('tz', 'Los_Angeles'), ('sp', MARKER), ('temp', MARKER), ('cur', MARKER), ('haystackPoint', MARKER), ('air', MARKER), ('effective', MARKER), ('heating', MARKER)]))])
+  {'ts': {'disKey': String(ui::timestamp), 'tz': String(Los_Angeles), 'chartFormat': String(ka)}, 'v0': {'id': Ref(p:q01b001:r:0197767d-c51944e4, "Building One VAV1-01 Eff Heat SP"), 'navName': String(Eff Heat SP), 'point': Marker, 'his': Marker, 'siteRef': Ref(p:q01b001:r:8fc116f8-72c5320c, "Building One"), 'equipRef': Ref(p:q01b001:r:b78a8dcc-828caa1b, "Building One VAV1-01"), 'curVal': Number(65.972, "°F"), 'curStatus': String(ok), 'kind': String(Number), 'unit': String(°F), 'tz': String(Los_Angeles), 'sp': Marker, 'temp': Marker, 'cur': Marker, 'haystackPoint': Marker, 'air': Marker, 'effective': Marker, 'heating': Marker}}
 
-  >>> grid.data()  # returns a Series since only one column present
+  >>> grid.to_pandas()  # returns a Series since only one column present
   ts
   2020-05-17 23:47:08-07:00       NaN
   2020-05-17 23:55:00-07:00    68.553
@@ -95,7 +104,7 @@ Here they are, in action:
   2020-05-18 01:13:09-07:00       NaN
   Name: @p:q01b001:r:0197767d-c51944e4 "Building One VAV1-01 Eff Heat SP", dtype: float64
 
-  >>> grid.data(squeeze=False)  # returns a DataFrame
+  >>> grid.to_pandas(squeeze=False)  # returns a DataFrame
                              @p:q01b001:r:0197767d-c51944e4 "Building One VAV1-01 Eff Heat SP"
   ts
   2020-05-17 23:47:08-07:00                                                NaN
@@ -103,8 +112,6 @@ Here they are, in action:
   2020-05-18 00:00:00-07:00                                             68.554
   2020-05-18 00:05:00-07:00                                             69.723
   2020-05-18 01:13:09-07:00                                                NaN
-
-Note especially that ``data()`` enables you to work with familiar Pandas objects.
 
 For more details, see the `API docs <api.html>`_.
 
@@ -115,16 +122,13 @@ Run ``bench/benchmark.py`` for these numbers.
 
 On a 59KB Zinc Grid with 16 columns and 287 rows (``small_example.zinc``):
 
-* ``zincio.read_zinc`` takes 45ms
-* ``hszinc.parse`` takes about 7.84 seconds
+* ``zincio.parse`` takes about 0.192 seconds, avg of 20 runs
+* ``hszinc.parse`` takes about 7.93 seconds, avg of 5 runs
 
 On a 107KB Zinc Grid with 32 columns and 287 rows (``medium_example.zinc``):
 
-* ``zincio.read_zinc`` takes 88ms
-* ``hszinc.parse`` takes about 15.2 seconds
+* ``zincio.parse`` takes about 0.325 seconds, avg of 20 runs
+* ``hszinc.parse`` takes about 15.3 seconds, avg of 5 runs
 
-In other words, ``zincio.read_zinc`` is about 200x faster than
-``hszinc.parse``, mostly thanks to using ``pandas.read_csv`` under the hood.
-
-On a larger 11MB Grid with 2002 columns and 849 rows, ``zincio.read_zinc``
-took 37.6 seconds, and ``hszinc.parse`` did not terminate within 10 minutes.
+In other words, ``zincio.parse`` is about 40-50x faster than
+``hszinc.parse``!

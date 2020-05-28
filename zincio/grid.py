@@ -1,19 +1,27 @@
+import logging
+import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 from os import PathLike
-from typing import Optional, Union
+from pandas.api.types import CategoricalDtype  # type: ignore
+from typing import Any, Dict, List, Optional, Union
 
-from .dtypes import MARKER
-from .typing import ColumnInfoType, GridInfoType
+from .dtypes import AbstractScalar, Boolean, Number, String, MARKER, NULL, NA
 
 
-YMD_HMS_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+ID_COLTAG = 'id'
+KIND_COLTAG = 'kind'
+UNIT_COLTAG = 'unit'
+ENUM_COLTAG = 'enum'
+
+NUMBER_KIND = String("Number")
+STRING_KIND = String("Str")
 
 
 def _stringify_tag(k, v):
     if v is MARKER:
         return str(k)
-    elif isinstance(v, str):
+    elif isinstance(v, String):
         return f"{k}:\"{v}\""
     else:
         return f"{k}:{v}"
@@ -42,33 +50,35 @@ class Grid:
     format, see https://project-haystack.org/doc/Zinc.
 
     Attributes:
-        grid_info: A GridInfoType containing, at a minimum, the version
+        grid_info: A Dict[str, Any] containing, at a minimum, the version
             information of the Grid, and potentially things like the operation
             performed to obtain it.
-        column_info: A ColumnInfoType containing metadata about each column.
-            Included are details such as what units a column represents, or the
-            Point ID associated with the column.
+        column_info: A Dict[str, Dict[str, Any]] containing metadata about each
+            column. Included are details such as what units a column
+            represents, or the Point ID associated with the column.
     """
 
     def __init__(
             self,
             *,
-            grid_info: GridInfoType,
-            column_info: ColumnInfoType,
+            version: int,
+            grid_info: Dict[str, Any],
+            column_info: Dict[str, Dict[str, Any]],
             data: pd.DataFrame):
-        self.grid_info = grid_info  # type: GridInfoType
-        self.column_info = column_info  # type: ColumnInfoType
-        self._data = data
+        self.version = version  # type: int
+        self.grid_info = grid_info  # type: Dict[str, Any]
+        self.column_info = column_info  # type: Dict[str, Dict[str, Any]]
+        self.data = data
 
     def __repr__(self):
         return (f"Grid<\n"
                 + f"grid_info: {self.grid_info.__repr__()}\n"
                 + f"column_info: {self.column_info.__repr__()}\n"
                 + "data:\n"
-                + self._data.__repr__()
+                + self.data.__repr__()
                 + ">")
 
-    def data(self, squeeze=True) -> Union[pd.DataFrame, pd.Series]:
+    def to_pandas(self, squeeze=True) -> Union[pd.DataFrame, pd.Series]:
         """Returns the tabular data in this Grid as a DataFrame or Series.
 
         Args:
@@ -79,9 +89,9 @@ class Grid:
             A `pd.DataFrame` or `pd.Series` containing the tabular data in the
             Grid, depending on the value of `squeeze`.
         """
-        if len(self._data.columns) == 1 and squeeze:
-            return self._data[self._data.columns[0]]
-        return self._data
+        if len(self.data.columns) == 1 and squeeze:
+            return self.data[self.data.columns[0]]
+        return self.data
 
     def to_zinc(self, path: Optional[PathLike] = None) -> Optional[str]:
         """Writes the object to a Zinc-formatted file.
@@ -106,7 +116,8 @@ class Grid:
         return "\n".join([gridinfostr, columninfostr, df.to_csv(header=False)])
 
     def _grid_info_str(self):
-        return " ".join(_stringify_tags(self.grid_info))
+        return " ".join([
+            f'ver:"{self.version}.0"'] + _stringify_tags(self.grid_info))
 
     def _column_info_str(self):
         cols = []
@@ -116,7 +127,7 @@ class Grid:
         return ",".join(cols)
 
     def _zinc_format_data(self):
-        df = self._data.copy()
+        df = self.data.copy()
         for i, colinfo in enumerate(self.column_info.values()):
             # Format datetime index as appropriate
             if i == 0:
@@ -125,12 +136,99 @@ class Grid:
                 # obvious builtin vectorized version.
                 df.index = [t.isoformat() for t in df.index.to_pydatetime()]
                 if 'tz' in colinfo:
-                    df.index += " " + colinfo['tz']
+                    df.index += " " + str(colinfo['tz'])
             # Append units to columns where relevant
             elif i >= 1:
                 colname = df.columns[i-1]
                 if "unit" in colinfo:
                     notna = df[colname].notna()
                     df.loc[notna, colname] = (
-                        df.loc[notna, colname].astype(str) + colinfo["unit"])
+                        df.loc[notna, colname].astype(str) + str(colinfo["unit"]))
         return df
+
+
+class GridBuilder:
+    """Builder for Grid.
+
+    Collects all necessary information before constructing the Grid.
+    """
+
+    def __init__(self, version: int):
+        self.version = version
+        self.grid_meta = None
+        self.col_meta: Dict[str, AbstractScalar] = {}
+        self.cols: Dict[str, List[AbstractScalar]] = {}
+
+    def add_meta(self, grid_meta: Dict[str, Any]):
+        self.grid_meta = grid_meta
+
+    def add_col(self, colname: str, col: Dict[str, Dict[str, Any]]):
+        self.col_meta[colname] = col
+        self.cols[colname] = []
+
+    def add_row(self, row: List[AbstractScalar]):
+        for k, v in zip(self.cols, row):
+            self.cols[k].append(v)
+
+    def build(self):
+        idx = [x.val for x in self.cols.pop('ts')]
+        df = pd.DataFrame(data=self.cols, index=idx)
+        df.index.name = 'ts'
+        # Rename columns with ID tag, if available
+        renaming = {}
+        for col in df.columns:
+            v = self.col_meta[col]
+            if ID_COLTAG in v:
+                renaming[col] = str(v[ID_COLTAG])
+        df.rename(columns=renaming, inplace=True)
+        for i, col in enumerate(self.col_meta):
+            # i == 0 corresponds to the index; skip
+            if i > 0:
+                colinfo = self.col_meta[col]
+                cname = df.columns[i-1]
+                df[cname] = _sanitize_series(df[cname], colinfo)
+        return Grid(
+            version=self.version,
+            grid_info=self.grid_meta,
+            column_info=self.col_meta,
+            data=df)
+
+
+def _pandasify(val: AbstractScalar) -> Any:
+    if val is None or val in (NULL, NA):
+        return np.nan
+    if isinstance(val, Number) or isinstance(val, String):
+        return val.value
+    return str(val)
+
+
+def _pandasify_bool(val: AbstractScalar) -> Any:
+    if isinstance(val, Boolean):
+        return val.value
+    return val
+
+
+def _sanitize_series(series: pd.Series, colinfo: Dict[str, Any]) -> pd.Series:
+    # 1. Ascertain dtype of Series
+    # 2. Apply pandasify to series
+    # 3. Reinterpret as dtype
+    kind = colinfo.get(KIND_COLTAG, None)
+    if kind is not None:
+        if kind == NUMBER_KIND:
+            return pd.to_numeric(series.apply(_pandasify))
+        elif ENUM_COLTAG in colinfo:
+            cat_type = CategoricalDtype(
+                categories=str(colinfo[ENUM_COLTAG]).split(","))
+            return series.apply(_pandasify).astype(cat_type)
+    else:
+        logging.debug("No column headers, heuristically inferring type")
+        sample = series[:1000].dropna()
+        if not len(sample):
+            logging.debug("No non-NA values from which to infer type")
+            return series
+        for v in sample:
+            if isinstance(v, Number):
+                return pd.to_numeric(series.apply(_pandasify))
+            if isinstance(v, Boolean):
+                return series.apply(_pandasify_bool)
+    return series

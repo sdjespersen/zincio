@@ -5,7 +5,6 @@ import pandas as pd  # type: ignore
 import pytest  # type: ignore
 import zincio
 
-from collections import OrderedDict
 from pandas.api.types import CategoricalDtype  # type: ignore
 from pathlib import Path
 
@@ -17,52 +16,51 @@ def get_abspath(relpath):
 FULL_GRID_FILE = get_abspath("full_grid.zinc")
 SINGLE_SERIES_FILE = get_abspath("single_series_grid.zinc")
 HISREAD_SERIES_FILE = get_abspath("hisread_series.zinc")
+MINIMAL_COLINFO_FILE = get_abspath("minimal_colinfo.zinc")
 
 
 def assert_grid_equal(a, b):
     assert a.grid_info == b.grid_info
     assert a.column_info == b.column_info
-    pd.testing.assert_frame_equal(a.data(squeeze=False), b._data)
+    pd.testing.assert_frame_equal(a.to_pandas(squeeze=False), b.data)
 
 
 def test_parse_zinc_grid_same_as_read_from_file():
     with open(FULL_GRID_FILE) as f:
         actual = zincio.parse(f.read())
-    expected = zincio.read_zinc(FULL_GRID_FILE)
+    expected = zincio.read(FULL_GRID_FILE)
     assert_grid_equal(actual, expected)
 
 
 def test_read_zinc_grid():
-    expected_grid_info = OrderedDict(
-        ver="3.0",
-        view="chart",
+    expected_grid_info = dict(
+        view=zincio.String("chart"),
         hisStart=zincio.Datetime(
-            "2020-05-18T00:00:00-07:00", tz="Los_Angeles"),
+            pd.Timestamp("2020-05-18T00:00:00-07:00"), tz="Los_Angeles"),
         hisEnd=zincio.Datetime(
-            "2020-05-18T01:15:00-07:00", tz="Los_Angeles"),
-        hisLimit=10000,
-        dis="Mon 18-May-2020")
-    expected_column_info = OrderedDict(
-        ts=OrderedDict(
-            disKey='ui::timestamp',
-            tz='Los_Angeles',
-            chartFormat='ka',
+            pd.Timestamp("2020-05-18T01:15:00-07:00"), tz="Los_Angeles"),
+        hisLimit=zincio.Number(10000),
+        dis=zincio.String("Mon 18-May-2020"))
+    expected_column_info = dict(
+        ts=dict(
+            disKey=zincio.String('ui::timestamp'),
+            tz=zincio.String('Los_Angeles'),
+            chartFormat=zincio.String('ka'),
         ),
-        v0=OrderedDict(
+        v0=dict(
             id=zincio.Ref('p:q01b001:r:0197767d-c51944e4',
                           'Building One VAV1-01 Eff Heat SP'),
-            navName='Eff Heat SP',
+            navName=zincio.String('Eff Heat SP'),
             point=zincio.MARKER,
             his=zincio.MARKER,
             siteRef=zincio.Ref(
                 'p:q01b001:r:8fc116f8-72c5320c', 'Building One'),
-            equipRef=zincio.Ref(
-                'p:q01b001:r:b78a8dcc-828caa1b', 'Building One VAV1-01'),
-            curVal=zincio.Quantity(65.972, '°F'),
-            curStatus='ok',
-            kind='Number',
-            unit='°F',
-            tz='Los_Angeles',
+            equipRef=zincio.Ref('p:q01b001:r:b78a8dcc-828caa1b', None),
+            curVal=zincio.Number(65.972, '°F'),
+            curStatus=zincio.String('ok'),
+            kind=zincio.String('Number'),
+            unit=zincio.String('°F'),
+            tz=zincio.String('Los_Angeles'),
             sp=zincio.MARKER,
             temp=zincio.MARKER,
             cur=zincio.MARKER,
@@ -71,98 +69,99 @@ def test_read_zinc_grid():
             effective=zincio.MARKER,
             heating=zincio.MARKER
         ),
-        v1=OrderedDict(
+        v1=dict(
             id=zincio.Ref('p:q01b001:r:e69a7401-f4b340ff',
                           'Building One VAV1-01 Eff Occupancy'),
-            navName='Eff Occupancy',
+            navName=zincio.String('Eff Occupancy'),
             point=zincio.MARKER,
             his=zincio.MARKER,
             siteRef=zincio.Ref(
                 'p:q01b001:r:8fc116f8-72c5320c', 'Building One'),
             equipRef=zincio.Ref(
                 'p:q01b001:r:b78a8dcc-828caa1b', 'Building One VAV1-01'),
-            curVal='Occupied',
-            curStatus='ok',
-            kind='Str',
-            tz='Los_Angeles',
+            curVal=zincio.String('Occupied'),
+            curStatus=zincio.String('ok'),
+            kind=zincio.String('Str'),
+            tz=zincio.String('Los_Angeles'),
             sensor=zincio.MARKER,
             cur=zincio.MARKER,
             haystackPoint=zincio.MARKER,
             hisCollectCov=zincio.MARKER,
-            enum='Nul,Occupied,Unoccupied,Bypass,Standby',
+            enum=zincio.String('Nul,Occupied,Unoccupied,Bypass,Standby'),
             effective=zincio.MARKER,
             occupied=zincio.MARKER,
         ),
-        v2=OrderedDict(
+        v2=dict(
             id=zincio.Ref('p:q01b001:r:dcfe87d9-cd034388',
                           'Building One VAV1-01 Damper Pos'),
-            navName='Damper Pos',
+            navName=zincio.String('Damper Pos'),
             point=zincio.MARKER,
             his=zincio.MARKER,
             siteRef=zincio.Ref(
                 'p:q01b001:r:8fc116f8-72c5320c', 'Building One'),
             equipRef=zincio.Ref(
                 'p:q01b001:r:b78a8dcc-828caa1b', 'Building One VAV1-01'),
-            curVal=zincio.Quantity(41.5, '%'),
-            curStatus='ok',
-            kind='Number',
-            unit='%',
-            tz='Los_Angeles',
+            curVal=zincio.Number(41.5, '%'),
+            curStatus=zincio.String('ok'),
+            kind=zincio.String('Number'),
+            unit=zincio.String('%'),
+            tz=zincio.String('Los_Angeles'),
             sensor=zincio.MARKER,
             cur=zincio.MARKER,
             damper=zincio.MARKER,
-            precision=1.0,
+            precision=zincio.Number(1.0),
             haystackPoint=zincio.MARKER,
             air=zincio.MARKER
         ),
-        v3=OrderedDict(
+        v3=dict(
             id=zincio.Ref('p:q01b001:r:8fab195e-58ffca99',
                           'Building One VAV1-01 Occ Heat SP Offset'),
-            navName='Occ Heat SP Offset',
+            navName=zincio.String('Occ Heat SP Offset'),
             point=zincio.MARKER,
             his=zincio.MARKER,
             siteRef=zincio.Ref(
                 'p:q01b001:r:8fc116f8-72c5320c', 'Building One'),
             equipRef=zincio.Ref(
                 'p:q01b001:r:b78a8dcc-828caa1b', 'Building One VAV1-01'),
-            curVal=zincio.Quantity(-2.394, '°C'),
-            curStatus='ok',
-            kind='Number',
-            unit='°C',
-            tz='Los_Angeles',
+            curVal=zincio.Number(-2.394, '°C'),
+            curStatus=zincio.String('ok'),
+            kind=zincio.String('Number'),
+            unit=zincio.String('°C'),
+            tz=zincio.String('Los_Angeles'),
             sp=zincio.MARKER,
             temp=zincio.MARKER,
             cur=zincio.MARKER,
             air=zincio.MARKER,
             occ=zincio.MARKER,
             writable=zincio.MARKER,
-            writeStatus='unknown',
+            writeStatus=zincio.String('unknown'),
             zone=zincio.MARKER,
-            hisCollectInterval='5min',
+            hisCollectInterval=zincio.Number(5.0, 'min'),
             heating=zincio.MARKER,
             offset=zincio.MARKER,
-            writeLevel=8.0,
+            writeLevel=zincio.Number(8.0, None),
             haystackPoint=zincio.MARKER,
-            writeVal=zincio.Quantity(-10.0, '°C'),
-            actions=('ver:\\"3.0\\"\\ndis,expr\\n\\"Override\\",'
-                        '\\"pointOverride(\\$self, \\$val, \\$duration)\\"\\n'
-                        '\\"Auto\\",\\"pointAuto(\\$self)\\"\\n')
+            writeVal=zincio.Number(-10.0),
+            actions=zincio.String(
+                'ver:\\"3.0\\"\\ndis,expr\\n\\"Override\\",'
+                '\\"pointOverride(\\$self, \\$val, \\$duration)\\"\\n'
+                '\\"Auto\\",\\"pointAuto(\\$self)\\"\\n')
         ),
-        v4=OrderedDict(
+        v4=dict(
             id=zincio.Ref('p:q01b001:r:260ce2bb-2ef5065f',
                           'Building One VAV1-01 Air Flow'),
-            navName='Air Flow',
+            navName=zincio.String('Air Flow'),
             point=zincio.MARKER,
             his=zincio.MARKER,
             siteRef=zincio.Ref(
                 'p:q01b001:r:8fc116f8-72c5320c', 'Building One'),
             equipRef=zincio.Ref(
                 'p:q01b001:r:b78a8dcc-828caa1b', 'Building One VAV1-01'),
-            curVal=zincio.Quantity(117.6611, 'cfm'),
-            curStatus='ok',
-            kind='Number',
-            unit='cfm',
-            tz='Los_Angeles',
+            curVal=zincio.Number(117.6611, 'cfm'),
+            curStatus=zincio.String('ok'),
+            kind=zincio.String('Number'),
+            unit=zincio.String('cfm'),
+            tz=zincio.String('Los_Angeles'),
             sensor=zincio.MARKER,
             cur=zincio.MARKER,
         )
@@ -200,8 +199,9 @@ def test_read_zinc_grid():
                 np.nan, 118.65, 62.0, np.nan, np.nan,
             ],
         })
-    actual = zincio.read_zinc(FULL_GRID_FILE)
+    actual = zincio.read(FULL_GRID_FILE)
     expected = zincio.Grid(
+        version=3,
         grid_info=expected_grid_info,
         column_info=expected_column_info,
         data=expected_dataframe)
@@ -209,36 +209,35 @@ def test_read_zinc_grid():
 
 
 def test_read_zinc_single_series():
-    expected_grid_info = OrderedDict(
-        ver="3.0",
-        view="chart",
+    expected_grid_info = dict(
+        view=zincio.String("chart"),
         hisStart=zincio.Datetime(
-            "2020-05-18T00:00:00-07:00", tz="Los_Angeles"),
+            pd.Timestamp("2020-05-18T00:00:00-07:00"), tz="Los_Angeles"),
         hisEnd=zincio.Datetime(
-            "2020-05-18T01:15:00-07:00", tz="Los_Angeles"),
-        hisLimit=10000,
-        dis="Mon 18-May-2020")
-    expected_column_info = OrderedDict(
-        ts=OrderedDict(
-            disKey='ui::timestamp',
-            tz='Los_Angeles',
-            chartFormat='ka',
+            pd.Timestamp("2020-05-18T01:15:00-07:00"), tz="Los_Angeles"),
+        hisLimit=zincio.Number(10000),
+        dis=zincio.String("Mon 18-May-2020"))
+    expected_column_info = dict(
+        ts=dict(
+            disKey=zincio.String('ui::timestamp'),
+            tz=zincio.String('Los_Angeles'),
+            chartFormat=zincio.String('ka'),
         ),
-        v0=OrderedDict(
+        v0=dict(
             id=zincio.Ref('p:q01b001:r:0197767d-c51944e4',
                           'Building One VAV1-01 Eff Heat SP'),
-            navName='Eff Heat SP',
+            navName=zincio.String('Eff Heat SP'),
             point=zincio.MARKER,
             his=zincio.MARKER,
             siteRef=zincio.Ref(
                 'p:q01b001:r:8fc116f8-72c5320c', 'Building One'),
             equipRef=zincio.Ref(
                 'p:q01b001:r:b78a8dcc-828caa1b', 'Building One VAV1-01'),
-            curVal=zincio.Quantity(65.972, '°F'),
-            curStatus='ok',
-            kind='Number',
-            unit='°F',
-            tz='Los_Angeles',
+            curVal=zincio.Number(65.972, '°F'),
+            curStatus=zincio.String('ok'),
+            kind=zincio.String('Number'),
+            unit=zincio.String('°F'),
+            tz=zincio.String('Los_Angeles'),
             sp=zincio.MARKER,
             temp=zincio.MARKER,
             cur=zincio.MARKER,
@@ -262,24 +261,24 @@ def test_read_zinc_single_series():
             name='ts',
         ))
     expected = zincio.Grid(
+        version=3,
         grid_info=expected_grid_info,
         column_info=expected_column_info,
         data=expected_data)
-    actual = zincio.read_zinc(SINGLE_SERIES_FILE)
+    actual = zincio.read(SINGLE_SERIES_FILE)
     assert_grid_equal(actual, expected)
-    pd.testing.assert_series_equal(actual.data(), expected._data[dname])
+    pd.testing.assert_series_equal(actual.to_pandas(), expected.data[dname])
 
 
 def test_read_zinc_deficient_column_info():
-    expected_grid_info = OrderedDict(
-        ver="3.0",
+    expected_grid_info = dict(
         id=zincio.Ref("p:q01b001:r:20aad139-beff4e8c",
                       "Building One VAV1-01 DA Temp"),
         hisStart=zincio.Datetime(
-            "2020-04-01T00:00:00-07:00", tz="Los_Angeles"),
+            pd.Timestamp("2020-04-01T00:00:00-07:00"), tz="Los_Angeles"),
         hisEnd=zincio.Datetime(
-            "2020-04-02T00:00:00-07:00", tz="Los_Angeles"))
-    expected_column_info = OrderedDict(ts={}, val={})
+            pd.Timestamp("2020-04-02T00:00:00-07:00"), tz="Los_Angeles"))
+    expected_column_info = dict(ts={}, val={})
     expected_data = pd.DataFrame(
         data={'val': [66.092, 66.002, 65.930]},
         index=pd.DatetimeIndex(
@@ -291,18 +290,64 @@ def test_read_zinc_deficient_column_info():
             name='ts',
         ))
     expected = zincio.Grid(
+        version=3,
         grid_info=expected_grid_info,
         column_info=expected_column_info,
         data=expected_data)
-    actual = zincio.read_zinc(HISREAD_SERIES_FILE)
+    actual = zincio.read(HISREAD_SERIES_FILE)
     assert_grid_equal(actual, expected)
-    pd.testing.assert_series_equal(actual.data(), expected._data['val'])
+    pd.testing.assert_series_equal(actual.to_pandas(), expected.data['val'])
+
+
+def test_read_zinc_minimal_colinfo():
+    expected_grid_info = dict(hisEnd=zincio.MARKER, hisStart=zincio.MARKER)
+    expected_column_info = dict(
+        ts=dict(),
+        v0=dict(id=zincio.Ref("vrt.x02.motion_state", None)),
+        v1=dict(id=zincio.Ref("vrt.x02.temperature", None)),
+        v2=dict(id=zincio.Ref("vrt.x18.humidity", None)),
+        v3=dict(id=zincio.Ref("vrt.x18.illuminance", None)),
+        v4=dict(id=zincio.Ref("vrt.x18.motion_count", None)),
+        v5=dict(id=zincio.Ref("vrt.x18.motion_state", None)),
+        v6=dict(id=zincio.Ref("vrt.x18.temperature", None)),
+        v7=dict(id=zincio.Ref("vrt.x19.humidity", None)),
+        v8=dict(id=zincio.Ref("vrt.x19.illuminance", None)),
+        v9=dict(id=zincio.Ref("vrt.x19.motion_count", None)))
+    expected_data = pd.DataFrame(
+        data={
+            "@vrt.x02.motion_state": [False, None, None],
+            "@vrt.x02.temperature": [25.5586, np.nan, np.nan],
+            "@vrt.x18.humidity": [np.nan, 62.3369, np.nan],
+            "@vrt.x18.illuminance": [np.nan, 927, np.nan],
+            "@vrt.x18.motion_count": [np.nan, 1, np.nan],
+            "@vrt.x18.motion_state": [None, True, None],
+            "@vrt.x18.temperature": [np.nan, 26.1035, np.nan],
+            "@vrt.x19.humidity": [np.nan, np.nan, 63.5195],
+            "@vrt.x19.illuminance": [np.nan, np.nan, 945],
+            "@vrt.x19.motion_count": [np.nan, np.nan, 11],
+        },
+        index=pd.Series(
+            data=[
+                pd.to_datetime("2018-03-21T15:45:00+10:00"),
+                pd.to_datetime("2018-03-21T14:30:00+10:00"),
+                pd.to_datetime("2018-03-21T14:45:00+10:00"),
+            ],
+            name='ts'
+        )
+    )
+    expected = zincio.Grid(
+        version=2,
+        grid_info=expected_grid_info,
+        column_info=expected_column_info,
+        data=expected_data)
+    actual = zincio.read(MINIMAL_COLINFO_FILE)
+    assert_grid_equal(actual, expected)
 
 
 def test_read_zinc_malformed_grid():
     grid = 'this is not a legal grid'
     with pytest.raises(zincio.ZincParseException):
-        zincio.read_zinc(io.StringIO(grid))
+        zincio.read(io.StringIO(grid))
 
 
 def test_read_zinc_error_grid():
@@ -312,21 +357,21 @@ def test_read_zinc_error_grid():
         'dis:"sys::NullErr: java.lang.NullPointerException"\n'
         'empty')
     with pytest.raises(zincio.ZincErrorGridException):
-        zincio.read_zinc(io.StringIO(err_grid))
+        zincio.read(io.StringIO(err_grid))
 
 
 def test_read_zinc_stringio_same_as_file():
-    expected = zincio.read_zinc(FULL_GRID_FILE)
+    expected = zincio.read(FULL_GRID_FILE)
     with open(FULL_GRID_FILE, encoding='utf-8') as f:
         raw = f.read()
-    actual = zincio.read_zinc(io.StringIO(raw))
+    actual = zincio.read(io.StringIO(raw))
     assert_grid_equal(actual, expected)
 
 
 def test_grid_to_zinc_string():
     with open(SINGLE_SERIES_FILE, encoding='utf-8') as f:
         expected = f.read()
-    actual = zincio.read_zinc(SINGLE_SERIES_FILE).to_zinc()
+    actual = zincio.read(SINGLE_SERIES_FILE).to_zinc()
     assert actual == expected
 
 
@@ -334,7 +379,7 @@ def test_grid_to_zinc_file(tmp_path):
     with open(SINGLE_SERIES_FILE, encoding='utf-8') as f:
         expected = f.read()
     output_file = tmp_path / "output.zinc"
-    zincio.read_zinc(SINGLE_SERIES_FILE).to_zinc(output_file)
+    zincio.read(SINGLE_SERIES_FILE).to_zinc(output_file)
     with open(output_file, encoding="utf-8") as f:
         actual = f.read()
     assert actual == expected
