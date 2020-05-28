@@ -6,14 +6,33 @@ import pandas as pd  # type: ignore
 from typing import Any, Optional, Union
 
 
-class AbstractScalar:
-    pass
+class Scalar:
+    """A scalar containing a primitive value."""
+
+    def __init__(self, value: Any) -> None:
+        self.value = value
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.value})"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, type(self)):
+            return False
+        if other is self:
+            return True
+        return self.value == other.value
 
 
-class SentinelScalar(AbstractScalar):
+class SentinelScalar(Scalar):
     """A valueless scalar whose meaning is found entirely in its type."""
 
-    def __repr__(self):
+    def __init__(self) -> None:
+        self.value = None
+
+    def __repr__(self) -> str:
         return type(self).__name__
 
 
@@ -41,26 +60,6 @@ NULL = Null()
 MARKER = Marker()
 REMOVE = Remove()
 NA = Na()
-
-
-class Scalar(AbstractScalar):
-    """A scalar containing a primitive value."""
-
-    def __init__(self, value: Any):
-        self.value = value
-
-    def __repr__(self):
-        return f"{type(self).__name__}({self.value})"
-
-    def __str__(self):
-        return str(self.value)
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return False
-        if other is self:
-            return True
-        return self.value == other.value
 
 
 class Boolean(Scalar):

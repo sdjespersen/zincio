@@ -12,13 +12,11 @@ from .dtypes import (
     NAN,
     BOOL_TRUE,
     BOOL_FALSE,
-    AbstractScalar,
-    Id,
     Coord,
     Datetime,
-    Marker,
     Number,
     Ref,
+    Scalar,
     String,
     XStr,
 )
@@ -117,7 +115,7 @@ class ZincParser:
         while self._cur.ttype is TokenType.ID:
             num_cols += 1
             colname: str = self._consume_tag_id()
-            col_meta: Dict[str, AbstractScalar] = {}
+            col_meta: Dict[str, Scalar] = {}
             if self._cur.ttype is TokenType.ID:
                 col_meta = self._parse_dict()
             gb.add_col(colname, col_meta)
@@ -134,7 +132,7 @@ class ZincParser:
                 break
 
             # read cells
-            cells: List[AbstractScalar] = []
+            cells: List[Scalar] = []
             for i in range(num_cols):
                 if self._cur in (tokens.COMMA, tokens.NEWLINE, tokens.EOF):
                     cells.append(NULL)
@@ -153,7 +151,7 @@ class ZincParser:
 
         return gb.build()
 
-    def _parse_val(self) -> AbstractScalar:
+    def _parse_val(self) -> Scalar:
         if self._cur.ttype is TokenType.RESERVED:
             v = self._cur
             self._consume_t(TokenType.RESERVED)
@@ -260,8 +258,8 @@ class ZincParser:
             return Datetime(ts)
         raise ZincParseException(f"Invalid datetime: {self._cur.val}")
 
-    def _parse_list(self) -> List[AbstractScalar]:
-        coll: List[AbstractScalar] = []
+    def _parse_list(self) -> List[Scalar]:
+        coll: List[Scalar] = []
         self._consume_i(tokens.LBRACKET)
         while self._cur != tokens.RBRACKET and self._cur != tokens.EOF:
             val = self._parse_val()
@@ -272,8 +270,8 @@ class ZincParser:
         self._consume_i(tokens.RBRACKET)
         return coll
 
-    def _parse_dict(self) -> Dict[str, AbstractScalar]:
-        db: Dict[str, AbstractScalar] = {}
+    def _parse_dict(self) -> Dict[str, Scalar]:
+        db: Dict[str, Scalar] = {}
         braces = self._cur is tokens.LBRACE
         if braces:
             self._consume_i(tokens.LBRACE)
@@ -281,7 +279,7 @@ class ZincParser:
             idstr: str = self._consume_tag_id()
             if not (idstr and idstr[0].islower()):
                 raise ZincParseException(f"Invalid dict tag name: {idstr}")
-            val: AbstractScalar = MARKER
+            val: Scalar = MARKER
             if self._cur is tokens.COLON:
                 self._consume_i(tokens.COLON)
                 val = self._parse_val()

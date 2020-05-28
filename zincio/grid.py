@@ -6,7 +6,7 @@ from os import PathLike
 from pandas.api.types import CategoricalDtype  # type: ignore
 from typing import Any, Dict, List, Optional, Union
 
-from .dtypes import AbstractScalar, Boolean, Number, String, MARKER, NULL, NA
+from .dtypes import Boolean, Number, Scalar, String, MARKER, NULL, NA
 
 
 ID_COLTAG = 'id'
@@ -161,17 +161,17 @@ class GridBuilder:
     def __init__(self, version: int):
         self.version = version
         self.grid_meta: Dict[str, Any] = {}
-        self.col_meta: Dict[str, Dict[str, AbstractScalar]] = {}
-        self.cols: Dict[str, List[AbstractScalar]] = {}
+        self.col_meta: Dict[str, Dict[str, Scalar]] = {}
+        self.cols: Dict[str, List[Scalar]] = {}
 
     def add_meta(self, grid_meta: Dict[str, Any]):
         self.grid_meta = grid_meta
 
-    def add_col(self, colname: str, col: Dict[str, AbstractScalar]):
+    def add_col(self, colname: str, col: Dict[str, Scalar]):
         self.col_meta[colname] = col
         self.cols[colname] = []
 
-    def add_row(self, row: List[AbstractScalar]):
+    def add_row(self, row: List[Scalar]):
         for k, v in zip(self.cols, row):
             self.cols[k].append(v)
 
@@ -203,7 +203,7 @@ class GridBuilder:
             data=df)
 
 
-def _pandasify(val: AbstractScalar) -> Any:
+def _pandasify(val: Scalar) -> Any:
     if val is None or val in (NULL, NA):
         return np.nan
     if isinstance(val, Number) or isinstance(val, String):
@@ -211,7 +211,7 @@ def _pandasify(val: AbstractScalar) -> Any:
     return str(val)
 
 
-def _pandasify_bool(val: AbstractScalar) -> Any:
+def _pandasify_bool(val: Scalar) -> Any:
     if isinstance(val, Boolean):
         return val.value
     if val is NULL:
