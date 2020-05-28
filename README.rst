@@ -23,11 +23,15 @@ Other Python libraries for Zinc exist, notably `hszinc
 reason: `performance`_. However, zincio does not have feature parity with
 hszinc library, so this comparison is not yet fair.
 
-**Note:** This implementation does not claim to adhere to the Zinc spec yet,
-and it likely never will; in particular, the spec includes support for things
-like nested ``Grid``s, which completely upend the assumptions of tabular data.
-In a sense, this library is opinionated: ``Grid``s should not be nested. Hence
-this library sacrifices some completeness for speed.
+.. note::
+
+   This implementation does not claim to adhere to the `Zinc spec
+   <https://project-haystack.org/doc/Zinc>`_ yet, and it likely never will. In
+   particular, the spec includes support for things like nested ``Grid``\ s;
+   this library does not. Nested ``Grid``\ s completely upend the assumption
+   that your data is tabular. Is your data tabular? Then this should work
+   fine.
+
 
 Getting Started
 ===============
@@ -131,4 +135,4 @@ On a 107KB Zinc Grid with 32 columns and 287 rows (``medium_example.zinc``):
 * ``hszinc.parse`` takes about 15.3 seconds, avg of 5 runs
 
 In other words, ``zincio.parse`` is about 40-50x faster than
-``hszinc.parse``!
+``hszinc.parse``.
