@@ -375,8 +375,10 @@ def test_parse_grid_with_sentinels():
         grid_info=expected_grid_info,
         column_info=expected_column_info,
         data=expected_data)
-    actual = zincio.parse(s)
-    assert_grid_equal(actual, expected)
+    actual_from_string = zincio.parse(s)
+    assert_grid_equal(actual_from_string, expected)
+    actual_from_bytes = zincio.parse(s.encode())
+    assert_grid_equal(actual_from_bytes, expected)
 
 
 def test_read_zinc_malformed_grid():

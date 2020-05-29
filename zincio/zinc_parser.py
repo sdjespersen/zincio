@@ -38,12 +38,14 @@ class ZincErrorGridException(Exception):
     pass
 
 
-def parse(s: str) -> Grid:
+def parse(s: Union[bytes, str]) -> Grid:
     """Parses utf-8 encoded string to a Grid.
 
     Arguments:
-        s: str, utf-8 encoded string to be parsed.
+        s: bytes or utf-8 encoded string to be parsed.
     """
+    if isinstance(s, bytes):
+        return read(io.StringIO(s.decode()))
     return read(io.StringIO(s))
 
 
